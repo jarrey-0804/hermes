@@ -41,6 +41,7 @@ from hermes.orchestrator.state_machine import (
 )
 from hermes.orchestrator.wal import WALEvent, WriteAheadLog
 from hermes.qc.artifact import (
+    ArtifactError,
     QCResultArtifact,
     QCVerdict,
     load_artifact,
@@ -132,56 +133,84 @@ class Orchestrator:
         # 创建 git 分支
         self._create_branch()
 
-        # 主循环
-        while not self._sm.phase.is_terminal:
-            self._check_global_timeout()
+        # 主循环 — try/finally 保证收尾逻辑一定执行（F3.3/F3.4 修复）
+        abort_reason: str = ""
+        try:
+            while not self._sm.phase.is_terminal:
+                self._check_global_timeout()
 
-            phase = self._sm.phase
+                phase = self._sm.phase
 
-            if phase == Phase.QC:
-                outcome = self._run_qc_loop()
-            else:
-                outcome = self._run_stage(phase)
+                if phase == Phase.QC:
+                    outcome = self._run_qc_loop()
+                else:
+                    outcome = self._run_stage(phase)
 
-            # 状态转移
-            try:
-                next_phase = self._sm.transition(outcome)
-                self._wal.append(WALEvent.PHASE_COMPLETE, {
-                    "phase": phase.value,
-                    "outcome": outcome.value,
-                    "next": next_phase.value,
-                })
-                self._log.info(
-                    "phase_complete",
-                    phase=phase.value,
-                    outcome=outcome.value,
-                    next=next_phase.value,
-                )
-            except MaxRetriesExceeded:
-                self._log.error("max_retries_exceeded", phase=phase.value)
-                self._sm.transition(Outcome.HARD_FAIL)
-            except TransitionError as e:
-                self._log.error("transition_error", error=str(e))
-                break
+                # 状态转移
+                try:
+                    next_phase = self._sm.transition(outcome)
+                    self._wal.append(WALEvent.PHASE_COMPLETE, {
+                        "phase": phase.value,
+                        "outcome": outcome.value,
+                        "next": next_phase.value,
+                    })
+                    self._log.info(
+                        "phase_complete",
+                        phase=phase.value,
+                        outcome=outcome.value,
+                        next=next_phase.value,
+                    )
+                except MaxRetriesExceeded:
+                    self._log.error("max_retries_exceeded", phase=phase.value)
+                    self._sm.transition(Outcome.HARD_FAIL)
+                except TransitionError as e:
+                    self._log.error("transition_error", error=str(e))
+                    break
 
-        # 完成
+        except BudgetExceededError as e:
+            abort_reason = f"budget_exceeded: {e}"
+            self._log.error("run_aborted", reason=abort_reason)
+        except OrchestratorError as e:
+            abort_reason = f"orchestrator_error: {e}"
+            self._log.error("run_aborted", reason=abort_reason)
+        except Exception as e:
+            abort_reason = f"unexpected_error: {type(e).__name__}: {e}"
+            self._log.error("run_aborted", reason=abort_reason)
+            raise
+        finally:
+            # 收尾逻辑 — 无论如何都执行
+            self._finalize(abort_reason)
+
+        return self._sm.phase
+
+    def _finalize(self, abort_reason: str = "") -> None:
+        """收尾：写 WAL RUN_COMPLETE/RUN_FAILED + 保存状态。
+
+        通过 finally 调用，保证即使主循环抛异常也会执行。
+        """
         final = self._sm.phase
         duration = time.time() - self._run_start
-        self._wal.append(WALEvent.RUN_COMPLETE, {
+
+        event = WALEvent.RUN_FAILED if abort_reason else WALEvent.RUN_COMPLETE
+        self._wal.append(event, {
             "final_phase": final.value,
             "duration_sec": round(duration, 1),
             "total_cost_usd": round(self._total_cost, 4),
+            **({"reason": abort_reason} if abort_reason else {}),
         })
         self._log.info(
-            "run_complete",
+            "run_complete" if not abort_reason else "run_finalized_after_error",
             final_phase=final.value,
             duration_sec=round(duration, 1),
             total_cost=round(self._total_cost, 4),
+            aborted=bool(abort_reason),
         )
 
-        # 保存最终状态
-        self._save_state()
-        return final
+        # 保存最终状态（即使异常也保存，便于恢复）
+        try:
+            self._save_state()
+        except Exception as e:
+            self._log.error("save_state_failed_in_finalize", error=str(e))
 
     def _run_stage(self, phase: Phase) -> Outcome:
         """执行单个阶段。"""
@@ -242,7 +271,11 @@ class Orchestrator:
             if not qc_path.exists():
                 return Outcome.SOFT_FAIL
 
-            qc_artifact = load_artifact(QCResultArtifact, qc_path)
+            try:
+                qc_artifact = load_artifact(QCResultArtifact, qc_path)
+            except ArtifactError as e:
+                self._log.error("qc_artifact_load_failed", error=str(e))
+                return Outcome.SOFT_FAIL
             # 更新硬检结果到 artifact
             qc_artifact.hard_check_passed = hard_result.passed
             qc_artifact.hard_check_details = hard_result.summary()

@@ -202,3 +202,46 @@ class TestValidateArtifact:
         data = {"key_findings": [], "scope_decision": "test"}  # empty findings (min_length=1)
         is_valid, errors = validate_artifact(FindingsArtifact, data)
         assert not is_valid
+
+
+class TestArtifactErrorHandling:
+    """F3.1 修复验证：Artifact I/O 异常处理。"""
+
+    def test_load_missing_file_raises_not_found(self, tmp_path: Path):
+        from hermes.qc.artifact import ArtifactNotFoundError
+        with pytest.raises(ArtifactNotFoundError, match="not found"):
+            load_artifact(FindingsArtifact, tmp_path / "nonexistent.json")
+
+    def test_load_corrupt_json_raises_corrupt(self, tmp_path: Path):
+        from hermes.qc.artifact import ArtifactCorruptError
+        bad_file = tmp_path / "bad.json"
+        bad_file.write_text("{invalid json!!!", encoding="utf-8")
+        with pytest.raises(ArtifactCorruptError, match="Invalid JSON"):
+            load_artifact(FindingsArtifact, bad_file)
+
+    def test_load_schema_mismatch_raises_corrupt(self, tmp_path: Path):
+        from hermes.qc.artifact import ArtifactCorruptError
+        bad_file = tmp_path / "wrong_schema.json"
+        bad_file.write_text('{"not": "a valid findings artifact"}', encoding="utf-8")
+        with pytest.raises(ArtifactCorruptError, match="Schema validation"):
+            load_artifact(FindingsArtifact, bad_file)
+
+    def test_load_unicode_error_raises_corrupt(self, tmp_path: Path):
+        from hermes.qc.artifact import ArtifactCorruptError
+        bad_file = tmp_path / "bad_encoding.json"
+        bad_file.write_bytes(b"\x80\x81\x82\x83")
+        with pytest.raises(ArtifactCorruptError, match="Invalid JSON"):
+            load_artifact(FindingsArtifact, bad_file)
+
+    def test_save_to_readonly_dir_raises_error(self, tmp_path: Path):
+        import os
+        from hermes.qc.artifact import ArtifactError
+        ro_dir = tmp_path / "readonly"
+        ro_dir.mkdir()
+        os.chmod(ro_dir, 0o444)
+        artifact = QCResultArtifact(verdict=QCVerdict.PASS)
+        try:
+            with pytest.raises(ArtifactError, match="Failed to save"):
+                save_artifact(artifact, ro_dir / "subdir" / "out.json")
+        finally:
+            os.chmod(ro_dir, 0o755)  # cleanup

@@ -56,6 +56,12 @@ class PathGuard:
         "**/.kube/**",
         "**/secrets*",
         "**/password*",
+        # Git 内部文件——防止 hook 注入 / remote 篡改 / 配置篡改
+        "**/.git/hooks/**",
+        "**/.git/config",
+        "**/.git/HEAD",
+        "**/.git/refs/**",
+        "**/.git/objects/**",
     ]
 
     # 系统级保护路径

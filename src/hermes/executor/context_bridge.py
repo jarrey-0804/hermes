@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Optional
 
 from hermes.qc.artifact import (
+    ArtifactError,
     ExecutionPlanArtifact,
     FindingsArtifact,
     QCResultArtifact,
@@ -99,7 +100,10 @@ class ContextBridge:
         if not qc_artifact_path.exists():
             return ""
 
-        qc = load_artifact(QCResultArtifact, qc_artifact_path)
+        try:
+            qc = load_artifact(QCResultArtifact, qc_artifact_path)
+        except ArtifactError:
+            return ""
         issues = "\n".join(f"  - {issue}" for issue in qc.issues_found[:10])
         return (
             f"## QC Feedback (Attempt {attempt})\n"
@@ -111,18 +115,21 @@ class ContextBridge:
 
     def _load_previous_artifact(self, from_phase: str):
         """加载上一阶段的 artifact。"""
-        if from_phase == "research":
-            path = self._task_dir / "research" / "findings.json"
-            if path.exists():
-                return load_artifact(FindingsArtifact, path)
-        elif from_phase == "plan":
-            path = self._task_dir / "plan" / "execution-plan.json"
-            if path.exists():
-                return load_artifact(ExecutionPlanArtifact, path)
-        elif from_phase == "qc":
-            path = self._task_dir / "qc" / "qc-result.json"
-            if path.exists():
-                return load_artifact(QCResultArtifact, path)
+        try:
+            if from_phase == "research":
+                path = self._task_dir / "research" / "findings.json"
+                if path.exists():
+                    return load_artifact(FindingsArtifact, path)
+            elif from_phase == "plan":
+                path = self._task_dir / "plan" / "execution-plan.json"
+                if path.exists():
+                    return load_artifact(ExecutionPlanArtifact, path)
+            elif from_phase == "qc":
+                path = self._task_dir / "qc" / "qc-result.json"
+                if path.exists():
+                    return load_artifact(QCResultArtifact, path)
+        except ArtifactError:
+            return None
         return None
 
     def _get_tier1(self, artifact) -> str:

@@ -278,21 +278,55 @@ class SOPProposalArtifact(BaseModel):
 # ─── Artifact I/O ──────────────────────────────────────────
 
 
+class ArtifactError(Exception):
+    """Artifact I/O 错误。"""
+
+
+class ArtifactNotFoundError(ArtifactError):
+    """Artifact 文件不存在。"""
+
+
+class ArtifactCorruptError(ArtifactError):
+    """Artifact 文件损坏（JSON 或 schema 错误）。"""
+
+
 def save_artifact(artifact: BaseModel, path: Path) -> None:
-    """保存 artifact 到 JSON 文件（原子写入）。"""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp_path = path.with_suffix(".tmp")
-    tmp_path.write_text(
-        artifact.model_dump_json(indent=2),
-        encoding="utf-8",
-    )
-    tmp_path.replace(path)
+    """保存 artifact 到 JSON 文件（原子写入）。
+
+    Raises:
+        ArtifactError: 写入失败（权限、磁盘满等）
+    """
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp_path = path.with_suffix(".tmp")
+        tmp_path.write_text(
+            artifact.model_dump_json(indent=2),
+            encoding="utf-8",
+        )
+        tmp_path.replace(path)
+    except OSError as e:
+        raise ArtifactError(f"Failed to save artifact to {path}: {e}") from e
 
 
 def load_artifact(cls: type[BaseModel], path: Path) -> BaseModel:
-    """从 JSON 文件加载 artifact。"""
-    data = json.loads(path.read_text(encoding="utf-8"))
-    return cls.model_validate(data)
+    """从 JSON 文件加载 artifact。
+
+    Raises:
+        ArtifactNotFoundError: 文件不存在
+        ArtifactCorruptError: JSON 解析或 schema 验证失败
+    """
+    if not path.exists():
+        raise ArtifactNotFoundError(f"Artifact file not found: {path}")
+
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, UnicodeDecodeError) as e:
+        raise ArtifactCorruptError(f"Invalid JSON in {path}: {e}") from e
+
+    try:
+        return cls.model_validate(data)
+    except Exception as e:
+        raise ArtifactCorruptError(f"Schema validation failed for {path}: {e}") from e
 
 
 def validate_artifact(cls: type[BaseModel], data: dict[str, Any]) -> tuple[bool, list[str]]:
