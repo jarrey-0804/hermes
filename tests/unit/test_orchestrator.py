@@ -14,10 +14,10 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from hermes.orchestrator.core import (
-    BudgetExceededError,
     Orchestrator,
     OrchestratorError,
 )
+from hermes.utils.budget import BudgetExceededError
 from hermes.orchestrator.state_machine import Outcome, Phase
 from hermes.utils.config import HermesConfig
 
@@ -51,16 +51,10 @@ class TestFinalizationOnError:
         orch = mock_orchestrator
 
         # Mock _run_stage 让第一阶段就超预算
-        original_run_stage = orch._run_stage
-
-        call_count = 0
-
         def mock_run_stage(phase):
-            nonlocal call_count
-            call_count += 1
-            orch._total_cost = 999.0  # 远超预算
-            # 模拟 _check_budget 会抛出 BudgetExceededError
-            orch._check_budget()
+            orch._budget.add_cost(999.0)  # 远超预算
+            # 模拟 _budget.check() 会抛出 BudgetExceededError
+            orch._budget.check()
             return Outcome.SUCCESS
 
         with patch.object(orch, "_run_stage", side_effect=mock_run_stage), \

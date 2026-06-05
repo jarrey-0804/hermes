@@ -7,28 +7,24 @@
 2. 根据 Outcome 决定下一步
 3. 执行状态转移
 
-非 TCB 职责外移到：ConfigValidator / BudgetTracker / ClaudeRunner / HardChecks。
+非 TCB 职责外移到：GitOps / PromptBuilder / BudgetTracker / ClaudeRunner / HardChecks。
+F1.1 修复：将 Git 操作、Prompt 构建、预算检查提取到独立模块。
 """
 
 from __future__ import annotations
 
 import json
-import subprocess
 import time
 import uuid
 from pathlib import Path
 from typing import Optional
 
-from jinja2 import Environment, FileSystemLoader
-
 from hermes.executor.claude_runner import (
-    ClaudeNetworkError,
-    ClaudeRefusedError,
     ClaudeResult,
     ClaudeRunner,
-    ClaudeTimeoutError,
 )
 from hermes.executor.context_bridge import ContextBridge
+from hermes.executor.prompt_builder import PromptBuilder
 from hermes.observability.logger import get_logger
 from hermes.orchestrator.state_machine import (
     DEFAULT_PHASE_CONFIGS,
@@ -43,20 +39,16 @@ from hermes.orchestrator.wal import WALEvent, WriteAheadLog
 from hermes.qc.artifact import (
     ArtifactError,
     QCResultArtifact,
-    QCVerdict,
     load_artifact,
-    save_artifact,
 )
 from hermes.qc.hard_checks import HardChecks
+from hermes.utils.budget import BudgetExceededError, BudgetTracker
 from hermes.utils.config import HermesConfig
+from hermes.utils.git_ops import GitError, GitOps
 
 
 class OrchestratorError(Exception):
     """Orchestrator 错误。"""
-
-
-class BudgetExceededError(OrchestratorError):
-    """预算超限。"""
 
 
 class Orchestrator:
@@ -90,23 +82,25 @@ class Orchestrator:
         self._task_dir = Path(self._config.general.data_dir) / self._run_id
         self._task_dir.mkdir(parents=True, exist_ok=True)
 
-        # 核心组件
+        # 核心组件（TCB）
         self._sm = StateMachine(phase_configs=self._build_phase_configs())
         self._wal = WriteAheadLog(self._task_dir / "wal.jsonl")
-        self._bridge = ContextBridge(self._task_dir)
-        self._runner = ClaudeRunner(work_dir=self._project_dir)
         self._log = get_logger("orchestrator", run_id=self._run_id)
 
-        # Prompt 模板
+        # 外部组件（非 TCB，F1.1 提取）
+        self._git = GitOps(self._project_dir)
+        self._bridge = ContextBridge(self._task_dir)
+        self._runner = ClaudeRunner(work_dir=self._project_dir)
         prompts_dir = Path(__file__).parent.parent.parent.parent / "prompts" / "system"
-        self._jinja = Environment(
-            loader=FileSystemLoader(str(prompts_dir)),
-            autoescape=False,
+        self._prompts = PromptBuilder(prompts_dir)
+        self._budget = BudgetTracker(
+            max_per_task_usd=self._config.budget.max_per_task_usd,
+            max_daily_usd=self._config.budget.max_daily_usd,
+            alert_threshold_pct=self._config.budget.alert_threshold_pct,
         )
 
         # 状态
         self._run_start: float = 0
-        self._total_cost: float = 0.0
         self._qc_rounds: int = 0
 
     @property
@@ -195,14 +189,14 @@ class Orchestrator:
         self._wal.append(event, {
             "final_phase": final.value,
             "duration_sec": round(duration, 1),
-            "total_cost_usd": round(self._total_cost, 4),
+            "total_cost_usd": round(self._budget.task_total, 4),
             **({"reason": abort_reason} if abort_reason else {}),
         })
         self._log.info(
             "run_complete" if not abort_reason else "run_finalized_after_error",
             final_phase=final.value,
             duration_sec=round(duration, 1),
-            total_cost=round(self._total_cost, 4),
+            total_cost=round(self._budget.task_total, 4),
             aborted=bool(abort_reason),
         )
 
@@ -224,29 +218,36 @@ class Orchestrator:
         })
         self._log.info("phase_started", phase=phase.value, model=config.model)
 
-        # 构建 prompt
-        prompt = self._build_prompt(phase, config)
-        system_prompt = self._build_system_prompt(phase, config)
+        # 构建 prompt（委托给 PromptBuilder）
+        prompt = self._prompts.build_user_prompt(
+            phase=phase,
+            config=config,
+            task_description=self._task_desc,
+            context_bridge=self._bridge,
+            task_dir=self._task_dir,
+        )
+        system_prompt = self._prompts.build_system_prompt(
+            phase=phase,
+            config=config,
+            task_dir=self._task_dir,
+        )
 
         # 执行 Claude
-        try:
-            result = self._runner.run_with_retry(
-                prompt=prompt,
-                system_prompt=system_prompt,
-                allowed_tools=config.allowed_tools,
-                max_turns=config.max_turns,
-                timeout_sec=config.timeout_sec,
-                budget_usd=config.budget_usd,
-                model=config.model,
-                permission_mode=config.permission_mode,
-                max_network_retries=3,
-            )
-        except ClaudeNetworkError:
-            return Outcome.HARD_FAIL
+        result = self._runner.run_with_retry(
+            prompt=prompt,
+            system_prompt=system_prompt,
+            allowed_tools=config.allowed_tools,
+            max_turns=config.max_turns,
+            timeout_sec=config.timeout_sec,
+            budget_usd=config.budget_usd,
+            model=config.model,
+            permission_mode=config.permission_mode,
+            max_network_retries=3,
+        )
 
-        # 追踪成本
-        self._total_cost += result.cost_usd
-        self._check_budget()
+        # 追踪成本（委托给 BudgetTracker）
+        self._budget.add_cost(result.cost_usd)
+        self._budget.check()
 
         # 分析结果
         return self._analyze_result(phase, config, result)
@@ -310,8 +311,19 @@ class Orchestrator:
         """带 QC 反馈重新执行 EXECUTE 阶段。"""
         config = self._sm.current_config()
         feedback = self._bridge.build_qc_feedback_context(qc_path, attempt)
-        prompt = self._build_prompt(Phase.EXECUTE, config, extra_context=feedback)
-        system_prompt = self._build_system_prompt(Phase.EXECUTE, config)
+        prompt = self._prompts.build_user_prompt(
+            phase=Phase.EXECUTE,
+            config=config,
+            task_description=self._task_desc,
+            context_bridge=self._bridge,
+            task_dir=self._task_dir,
+            extra_context=feedback,
+        )
+        system_prompt = self._prompts.build_system_prompt(
+            phase=Phase.EXECUTE,
+            config=config,
+            task_dir=self._task_dir,
+        )
 
         result = self._runner.run_with_retry(
             prompt=prompt,
@@ -324,7 +336,7 @@ class Orchestrator:
             max_network_retries=3,
         )
 
-        self._total_cost += result.cost_usd
+        self._budget.add_cost(result.cost_usd)
         return self._analyze_result(Phase.EXECUTE, config, result)
 
     def _analyze_result(
@@ -339,6 +351,10 @@ class Orchestrator:
             return Outcome.REFUSED
 
         if not result.success:
+            # 区分网络错误和其他硬失败（F3.2 修复）
+            if result.stderr and "Network retries exhausted" in result.stderr:
+                self._log.warn("network_error", phase=phase.value, stderr=result.stderr[:200])
+                return Outcome.NETWORK_ERROR
             return Outcome.HARD_FAIL
 
         # 检查必需输出
@@ -354,67 +370,18 @@ class Orchestrator:
 
         return Outcome.SUCCESS
 
-    # ─── Prompt 构建 ────────────────────────────────────────
-
-    def _build_prompt(
-        self, phase: Phase, config: PhaseConfig, extra_context: str = ""
-    ) -> str:
-        """构建用户 prompt。"""
-        parts: list[str] = []
-
-        # 任务描述
-        parts.append(f"## Task\n{self._task_desc}")
-
-        # 上下文（上一阶段产出）
-        prev_phase = self._get_previous_phase(phase)
-        if prev_phase:
-            context = self._bridge.build_context(
-                from_phase=prev_phase.value,
-                to_phase=phase.value,
-            )
-            parts.append(context)
-
-        # 额外上下文（QC 反馈等）
-        if extra_context:
-            parts.append(extra_context)
-
-        # 输出指令
-        if config.required_output:
-            output_path = self._task_dir / config.required_output
-            parts.append(f"## Output\nWrite your output to: {output_path}")
-
-        return "\n\n".join(parts)
-
-    def _build_system_prompt(self, phase: Phase, config: PhaseConfig) -> str:
-        """构建 system prompt（Jinja2 模板）。"""
-        template_name = f"{phase.value}_system.j2"
-        try:
-            template = self._jinja.get_template(template_name)
-            return template.render(
-                task_dir=str(self._task_dir),
-                timeout_sec=config.timeout_sec,
-                max_turns=config.max_turns,
-                model=config.model,
-            )
-        except Exception:
-            # 模板不存在时使用默认
-            return f"You are Hermes {phase.value.upper()} agent."
-
-    def _get_previous_phase(self, phase: Phase) -> Optional[Phase]:
-        """获取上一阶段。"""
-        order = [Phase.RESEARCH, Phase.PLAN, Phase.EXECUTE, Phase.QC]
-        try:
-            idx = order.index(phase)
-            return order[idx - 1] if idx > 0 else None
-        except ValueError:
-            return None
-
-    # ─── 辅助方法 ──────────────────────────────────────────
+    # ─── 辅助方法（委托给外部模块）──────────────────────────
 
     def _run_hard_checks(self):
-        """运行硬检脚本。"""
-        diff_text = self._get_git_diff()
-        changed_files = self._get_changed_files()
+        """运行硬检脚本（委托给 GitOps + HardChecks）。"""
+        try:
+            diff_text = self._git.get_diff()
+            changed_files = self._git.get_changed_files()
+        except GitError as e:
+            self._log.warn("git_ops_failed_in_hard_checks", error=str(e))
+            diff_text = ""
+            changed_files = []
+
         checks = HardChecks(
             project_dir=self._project_dir,
             max_diff_lines=self._config.qc_rules.max_diff_lines,
@@ -424,59 +391,21 @@ class Orchestrator:
         return checks.run_all(diff_text=diff_text, changed_files=changed_files)
 
     def _rollback_execute(self) -> None:
-        """回滚 EXECUTE 阶段的代码改动。"""
+        """回滚 EXECUTE 阶段的代码改动（委托给 GitOps）。"""
         self._wal.append(WALEvent.ROLLBACK, {"reason": "qc_failed"})
         try:
-            subprocess.run(
-                ["git", "checkout", "--", "."],
-                cwd=str(self._project_dir),
-                capture_output=True,
-                timeout=30,
-            )
-        except (subprocess.SubprocessError, OSError):
-            self._log.error("rollback_failed")
+            self._git.rollback()
+        except GitError as e:
+            self._log.error("rollback_failed", error=str(e))
 
     def _create_branch(self) -> None:
-        """创建任务分支。"""
+        """创建任务分支（委托给 GitOps）。"""
         branch = f"{self._config.git.branch_prefix}{self._run_id}"
         try:
-            subprocess.run(
-                ["git", "checkout", "-b", branch],
-                cwd=str(self._project_dir),
-                capture_output=True,
-                timeout=10,
-            )
+            self._git.create_branch(branch)
             self._log.info("branch_created", branch=branch)
-        except (subprocess.SubprocessError, OSError):
-            self._log.warn("branch_creation_failed")
-
-    def _get_git_diff(self) -> str:
-        """获取当前 git diff。"""
-        try:
-            result = subprocess.run(
-                ["git", "diff", "HEAD"],
-                cwd=str(self._project_dir),
-                capture_output=True,
-                text=True,
-                timeout=30,
-            )
-            return result.stdout
-        except (subprocess.SubprocessError, OSError):
-            return ""
-
-    def _get_changed_files(self) -> list[str]:
-        """获取变更文件列表。"""
-        try:
-            result = subprocess.run(
-                ["git", "diff", "--name-only", "HEAD"],
-                cwd=str(self._project_dir),
-                capture_output=True,
-                text=True,
-                timeout=10,
-            )
-            return [f for f in result.stdout.strip().split("\n") if f]
-        except (subprocess.SubprocessError, OSError):
-            return []
+        except GitError as e:
+            self._log.warn("branch_creation_failed", error=str(e))
 
     def _check_global_timeout(self) -> None:
         """检查全局超时。"""
@@ -486,26 +415,13 @@ class Orchestrator:
             self._wal.append(WALEvent.PHASE_TIMEOUT, {"type": "global"})
             raise OrchestratorError("Global timeout exceeded")
 
-    def _check_budget(self) -> None:
-        """检查预算。"""
-        if self._total_cost > self._config.budget.max_per_task_usd:
-            self._log.error(
-                "budget_exceeded",
-                cost=self._total_cost,
-                limit=self._config.budget.max_per_task_usd,
-            )
-            raise BudgetExceededError(
-                f"Cost ${self._total_cost:.2f} exceeds "
-                f"${self._config.budget.max_per_task_usd:.2f}"
-            )
-
     def _save_state(self) -> None:
         """保存 Orchestrator 状态。"""
         state = {
             "run_id": self._run_id,
             "task": self._task_desc,
             "phase": self._sm.phase.value,
-            "total_cost_usd": round(self._total_cost, 4),
+            "total_cost_usd": round(self._budget.task_total, 4),
             "qc_rounds": self._qc_rounds,
             "duration_sec": round(time.time() - self._run_start, 1),
             "state_machine": self._sm.to_dict(),

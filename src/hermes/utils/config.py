@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import os
+import re
 from pathlib import Path
 from typing import Any, Optional
 
@@ -178,6 +179,11 @@ class HermesConfig(BaseModel):
     def load(cls, path: Path) -> HermesConfig:
         """从 YAML 文件加载配置。"""
         if not path.exists():
+            log = get_logger("config")
+            log.warning(
+                "config_file_not_found_using_defaults",
+                path=str(path),
+            )
             return cls()
 
         raw = yaml.safe_load(path.read_text(encoding="utf-8"))
@@ -327,8 +333,11 @@ class ConfigValidator:
         for stage_name in ["research", "plan", "execute", "qc"]:
             stage = getattr(self._config.stages, stage_name)
             for tool in stage.allowed_tools:
-                if tool.startswith("Bash(git "):
-                    op = tool.split("(")[1].split(" ")[1] if " " in tool.split("(")[1] else ""
+                # 用 regex 解析 git 操作（F5.1 修复）
+                # 匹配 "Bash(git <op>" 格式，提取 <op> 部分
+                match = re.match(r"Bash\(git\s+(\w+)", tool)
+                if match:
+                    op = match.group(1)
                     if op in forbidden:
                         result.add_error(
                             f"{stage_name} stage has forbidden git op: {tool}"

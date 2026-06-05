@@ -91,6 +91,19 @@ class TestStateMachineTransitions:
         sm.transition(Outcome.SUCCESS)  # → ESCALATE
         assert sm.phase == Phase.ESCALATE
 
+    def test_network_error_always_escalates(self):
+        """NETWORK_ERROR 应该像 HARD_FAIL 一样转移（但可区分）。"""
+        for phase in [Phase.RESEARCH, Phase.PLAN, Phase.EXECUTE, Phase.QC]:
+            sm = StateMachine(initial_phase=phase)
+            sm.transition(Outcome.NETWORK_ERROR)
+            # RESEARCH skips to PLAN, others escalate
+            if phase == Phase.RESEARCH:
+                assert sm.phase == Phase.PLAN
+            elif phase == Phase.QC:
+                assert sm.phase == Phase.PROPOSE_SOP
+            else:
+                assert sm.phase == Phase.ESCALATE
+
     def test_refused_always_escalates(self):
         """任何阶段的 REFUSED 都进入 ESCALATE。"""
         for phase in [Phase.RESEARCH, Phase.PLAN, Phase.EXECUTE, Phase.QC]:

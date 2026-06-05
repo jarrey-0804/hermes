@@ -40,6 +40,7 @@ class Outcome(str, Enum):
     HARD_FAIL = "hard_fail"
     TIMEOUT = "timeout"
     REFUSED = "refused"  # Claude 拒绝执行（第11轮边界案例）
+    NETWORK_ERROR = "network_error"  # 网络/API 错误（重试耗尽后）
 
 
 @dataclass(frozen=True)
@@ -75,30 +76,35 @@ _TRANSITIONS: dict[Phase, dict[Outcome, Phase]] = {
         Outcome.SOFT_FAIL: Phase.RESEARCH,  # 重试自身
         Outcome.HARD_FAIL: Phase.PLAN,  # 跳过 RESEARCH（第3轮 ErrorPolicy）
         Outcome.TIMEOUT: Phase.PLAN,
+        Outcome.NETWORK_ERROR: Phase.PLAN,
     },
     Phase.PLAN: {
         Outcome.SUCCESS: Phase.EXECUTE,
         Outcome.SOFT_FAIL: Phase.PLAN,
         Outcome.HARD_FAIL: Phase.ESCALATE,
         Outcome.TIMEOUT: Phase.ESCALATE,
+        Outcome.NETWORK_ERROR: Phase.ESCALATE,
     },
     Phase.EXECUTE: {
         Outcome.SUCCESS: Phase.QC,
         Outcome.SOFT_FAIL: Phase.EXECUTE,
         Outcome.HARD_FAIL: Phase.ESCALATE,
         Outcome.TIMEOUT: Phase.ESCALATE,
+        Outcome.NETWORK_ERROR: Phase.ESCALATE,
     },
     Phase.QC: {
         Outcome.SUCCESS: Phase.DONE,
         Outcome.SOFT_FAIL: Phase.PLAN,  # QC 不过回退到 PLAN 重新规划
         Outcome.HARD_FAIL: Phase.PROPOSE_SOP,
         Outcome.TIMEOUT: Phase.PROPOSE_SOP,
+        Outcome.NETWORK_ERROR: Phase.PROPOSE_SOP,
     },
     Phase.PROPOSE_SOP: {
         Outcome.SUCCESS: Phase.ESCALATE,
         Outcome.SOFT_FAIL: Phase.ESCALATE,
         Outcome.HARD_FAIL: Phase.ESCALATE,
         Outcome.TIMEOUT: Phase.ESCALATE,
+        Outcome.NETWORK_ERROR: Phase.ESCALATE,
     },
 }
 
