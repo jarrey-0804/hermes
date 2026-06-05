@@ -1,0 +1,164 @@
+# Hermes — 统一配置文件
+# 详见第8轮讨论：统一配置系统
+
+general:
+  project_dir: /workspace
+  data_dir: ./runs          # 运行时数据目录（不进 Git）
+  log_level: INFO           # DEBUG | INFO | WARN | ERROR
+  log_format: json          # json | console
+
+model:
+  default: sonnet
+  research: haiku           # RESEARCH 阶段用轻量模型节省成本
+  plan: sonnet
+  execute: sonnet
+  qc: haiku                 # QC 审查用轻量模型
+
+stages:
+  research:
+    timeout_sec: 900        # 15 分钟
+    max_turns: 8
+    max_retries: 1
+    budget_usd: 1.00
+    model: haiku
+    allowed_tools:
+      - Read
+      - Glob
+      - Grep
+      - Write               # 仅写 artifacts
+      - "Bash(git log:*)"
+      - "Bash(git diff HEAD:*)"
+    required_output: research/findings.json
+
+  plan:
+    timeout_sec: 600        # 10 分钟
+    max_turns: 6
+    max_retries: 1
+    budget_usd: 1.50
+    model: sonnet
+    allowed_tools:
+      - Read
+      - Glob
+      - Grep
+      - Write
+      - "Bash(git log:*)"
+      - "Bash(git diff HEAD:*)"
+    required_output: plan/execution-plan.json
+
+  execute:
+    timeout_sec: 1800       # 30 分钟
+    max_turns: 12
+    max_retries: 2
+    budget_usd: 3.00
+    model: sonnet
+    allowed_tools:
+      - Read
+      - Glob
+      - Grep
+      - Write
+      - Edit
+      - "Bash(npm run:*)"
+      - "Bash(python src/:*)"
+      - "Bash(pytest:*)"
+      - "Bash(git diff HEAD:*)"
+    required_output: null   # EXECUTE 直接修改源码
+
+  qc:
+    timeout_sec: 600        # 10 分钟
+    max_turns: 4
+    max_retries: 0
+    budget_usd: 0.50
+    model: haiku
+    permission_mode: plan   # 只读审查
+    allowed_tools:
+      - Read
+      - Glob
+      - Grep
+      - Write               # 仅写 qc-result.json
+      - "Bash(git diff HEAD:*)"
+      - "Bash(pytest:*)"
+    required_output: qc/qc-result.json
+
+qc_rules:
+  max_diff_lines: 500
+  check_secrets: true
+  check_binary_files: true
+  check_todo_fixme: true
+  protected_files:
+    - ".env"
+    - ".env.*"
+    - "**/credentials*"
+    - "**/*.pem"
+    - "**/*.key"
+  exclude_patterns:
+    - "node_modules/**"
+    - ".git/**"
+    - "__pycache__/**"
+    - "*.pyc"
+    - "dist/**"
+    - "build/**"
+
+budget:
+  max_per_task_usd: 5.00
+  max_daily_usd: 50.00
+  alert_threshold_pct: 80
+  cost_model: anthropic     # anthropic | custom
+
+docker:
+  enabled: false             # MVP 阶段可选 Docker
+  image: hermes-agent:latest
+  memory: 4g
+  cpus: 2
+  pids_limit: 100
+  network: restricted
+  read_only: true
+
+security:
+  webfetch_whitelist:
+    - "docs.python.org"
+    - "developer.mozilla.org"
+    - "pkg.go.dev"
+    - "docs.rs"
+  forbidden_git_ops:
+    - checkout
+    - add
+    - commit
+    - reset
+    - stash
+    - merge
+    - rebase
+    - push
+    - fetch
+  max_file_size_kb: 1024     # 单文件最大 1MB
+
+sop:
+  enabled: false             # MVP 阶段关闭
+  ttl_days: 7
+  approval_sla_hours: 48
+  auto_expire: true
+
+heartbeat:
+  interval_sec: 10
+  timeout_sec: 30
+
+queue:
+  max_concurrent: 1          # MVP 单任务串行
+  priorities:
+    - SYSTEM
+    - URGENT
+    - NORMAL
+    - LOW
+
+notifications:
+  enabled: false
+  slack_webhook_env: SLACK_WEBHOOK_URL
+
+dashboard:
+  enabled: false
+  port: 8080
+  refresh_sec: 30
+
+git:
+  branch_prefix: "auto/"
+  pre_receive_hook: false
+  auto_commit: false         # Orchestrator 管理 commit，不由 Claude
