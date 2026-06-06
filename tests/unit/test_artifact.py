@@ -73,9 +73,7 @@ class TestFindingsArtifact:
         with pytest.raises(Exception):
             FindingsArtifact(
                 key_findings=[
-                    ResearchFinding(
-                        finding=f"F{i}", evidence=f"e{i}", confidence=0.5
-                    )
+                    ResearchFinding(finding=f"F{i}", evidence=f"e{i}", confidence=0.5)
                     for i in range(20)  # > 15 max
                 ],
                 scope_decision="test",
@@ -95,8 +93,9 @@ class TestExecutionPlanArtifact:
         plan = ExecutionPlanArtifact(
             steps=[
                 ExecutionStep(id=1, action="Add validation function", files_affected=["src/v.py"]),
-                ExecutionStep(id=2, action="Update API handler", files_affected=["src/api.py"],
-                              depends_on=[1]),
+                ExecutionStep(
+                    id=2, action="Update API handler", files_affected=["src/api.py"], depends_on=[1]
+                ),
             ],
             acceptance_criteria=["Tests pass", "No lint errors"],
         )
@@ -205,11 +204,13 @@ class TestArtifactErrorHandling:
 
     def test_load_missing_file_raises_not_found(self, tmp_path: Path):
         from hermes.qc.artifact import ArtifactNotFoundError
+
         with pytest.raises(ArtifactNotFoundError, match="not found"):
             load_artifact(FindingsArtifact, tmp_path / "nonexistent.json")
 
     def test_load_corrupt_json_raises_corrupt(self, tmp_path: Path):
         from hermes.qc.artifact import ArtifactCorruptError
+
         bad_file = tmp_path / "bad.json"
         bad_file.write_text("{invalid json!!!", encoding="utf-8")
         with pytest.raises(ArtifactCorruptError, match="Invalid JSON"):
@@ -217,6 +218,7 @@ class TestArtifactErrorHandling:
 
     def test_load_schema_mismatch_raises_corrupt(self, tmp_path: Path):
         from hermes.qc.artifact import ArtifactCorruptError
+
         bad_file = tmp_path / "wrong_schema.json"
         bad_file.write_text('{"not": "a valid findings artifact"}', encoding="utf-8")
         with pytest.raises(ArtifactCorruptError, match="Schema validation"):
@@ -224,6 +226,7 @@ class TestArtifactErrorHandling:
 
     def test_load_unicode_error_raises_corrupt(self, tmp_path: Path):
         from hermes.qc.artifact import ArtifactCorruptError
+
         bad_file = tmp_path / "bad_encoding.json"
         bad_file.write_bytes(b"\x80\x81\x82\x83")
         with pytest.raises(ArtifactCorruptError, match="Invalid JSON"):
@@ -233,6 +236,7 @@ class TestArtifactErrorHandling:
         import os
 
         from hermes.qc.artifact import ArtifactError
+
         ro_dir = tmp_path / "readonly"
         ro_dir.mkdir()
         os.chmod(ro_dir, 0o444)

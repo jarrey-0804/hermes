@@ -91,8 +91,7 @@ class BudgetTracker:
 
         if self._daily_total > self._max_daily:
             raise BudgetExceededError(
-                f"Daily cost ${self._daily_total:.2f} exceeds "
-                f"${self._max_daily:.2f} daily limit"
+                f"Daily cost ${self._daily_total:.2f} exceeds ${self._max_daily:.2f} daily limit"
             )
 
     def reset_task(self) -> None:

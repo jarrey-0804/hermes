@@ -56,8 +56,10 @@ class TestFinalizationOnError:
             orch._budget.check()
             return Outcome.SUCCESS
 
-        with patch.object(orch, "_run_stage", side_effect=mock_run_stage), \
-             patch.object(orch, "_create_branch"):
+        with (
+            patch.object(orch, "_run_stage", side_effect=mock_run_stage),
+            patch.object(orch, "_create_branch"),
+        ):
             # run() 应该不抛出异常，而是返回 ESCALATE 或当前 phase
             orch.run()
 
@@ -87,8 +89,10 @@ class TestFinalizationOnError:
             orch._check_global_timeout()
             return Outcome.SUCCESS
 
-        with patch.object(orch, "_run_stage", side_effect=mock_run_stage), \
-             patch.object(orch, "_create_branch"):
+        with (
+            patch.object(orch, "_run_stage", side_effect=mock_run_stage),
+            patch.object(orch, "_create_branch"),
+        ):
             orch.run()
 
         # 验证收尾执行了
@@ -105,8 +109,10 @@ class TestFinalizationOnError:
         def mock_run_stage(phase):
             raise ValueError("Unexpected internal error")
 
-        with patch.object(orch, "_run_stage", side_effect=mock_run_stage), \
-             patch.object(orch, "_create_branch"):
+        with (
+            patch.object(orch, "_run_stage", side_effect=mock_run_stage),
+            patch.object(orch, "_create_branch"),
+        ):
             with pytest.raises(ValueError, match="Unexpected internal error"):
                 orch.run()
 
@@ -146,8 +152,10 @@ class TestFinalizationOnError:
         def mock_run_stage(phase):
             raise BudgetExceededError("Cost $99.99 exceeds $5.00")
 
-        with patch.object(orch, "_run_stage", side_effect=mock_run_stage), \
-             patch.object(orch, "_create_branch"):
+        with (
+            patch.object(orch, "_run_stage", side_effect=mock_run_stage),
+            patch.object(orch, "_create_branch"),
+        ):
             orch.run()
 
         wal_path = orch.task_dir / "wal.jsonl"

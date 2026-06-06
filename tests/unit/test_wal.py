@@ -29,8 +29,12 @@ def wal(wal_path: Path) -> WriteAheadLog:
 class TestWALEntry:
     def test_to_json_and_back(self):
         entry = WALEntry(
-            seq=0, event="test", data={"key": "value"},
-            ts=time.time(), prev_hash="genesis", entry_hash="abc123",
+            seq=0,
+            event="test",
+            data={"key": "value"},
+            ts=time.time(),
+            prev_hash="genesis",
+            entry_hash="abc123",
         )
         json_str = entry.to_json()
         parsed = WALEntry.from_json(json_str)
@@ -40,8 +44,11 @@ class TestWALEntry:
 
     def test_compute_hash_deterministic(self):
         entry = WALEntry(
-            seq=0, event="test", data={"key": "value"},
-            ts=1000.0, prev_hash="genesis",
+            seq=0,
+            event="test",
+            data={"key": "value"},
+            ts=1000.0,
+            prev_hash="genesis",
         )
         h1 = entry.compute_hash("secret")
         h2 = entry.compute_hash("secret")
@@ -50,7 +57,11 @@ class TestWALEntry:
 
     def test_hash_changes_with_secret(self):
         entry = WALEntry(
-            seq=0, event="test", data={}, ts=1000.0, prev_hash="genesis",
+            seq=0,
+            event="test",
+            data={},
+            ts=1000.0,
+            prev_hash="genesis",
         )
         h1 = entry.compute_hash("secret1")
         h2 = entry.compute_hash("secret2")

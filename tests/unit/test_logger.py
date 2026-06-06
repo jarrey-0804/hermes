@@ -16,6 +16,7 @@ from hermes.observability.logger import (
 def reset_logging_state():
     """Reset logging state before and after each test."""
     import hermes.observability.logger as logger_module
+
     logger_module._configured = False
     yield
     logger_module._configured = False
@@ -49,6 +50,7 @@ class TestSetupLogging:
     def test_setup_logging_idempotent(self, tmp_path: Path):
         """Test that setup_logging is idempotent (only configures once)."""
         import hermes.observability.logger as logger_module
+
         log1 = setup_logging(level="INFO", format="json")
         assert logger_module._configured is True
         # Second call should return early (already configured)

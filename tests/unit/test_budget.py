@@ -51,7 +51,7 @@ class TestBudgetTracker:
         """检查每日预算超限。"""
         tracker = BudgetTracker(
             max_per_task_usd=50.0,  # 单任务预算足够
-            max_daily_usd=10.0,     # 日预算较低
+            max_daily_usd=10.0,  # 日预算较低
         )
 
         tracker.add_cost(11.0)

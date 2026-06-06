@@ -44,9 +44,7 @@ class PromptBuilder:
             )
         return self._jinja
 
-    def build_system_prompt(
-        self, phase: Phase, config: PhaseConfig, task_dir: Path
-    ) -> str:
+    def build_system_prompt(self, phase: Phase, config: PhaseConfig, task_dir: Path) -> str:
         """构建 system prompt。
 
         Args:

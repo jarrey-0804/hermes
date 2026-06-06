@@ -65,7 +65,7 @@ class Orchestrator:
     """
 
     GLOBAL_TIMEOUT_SEC = 90 * 60  # 90 分钟全局兜底
-    QC_MAX_ROUNDS = 3             # QC 最大循环次数
+    QC_MAX_ROUNDS = 3  # QC 最大循环次数
 
     def __init__(
         self,
@@ -117,10 +117,13 @@ class Orchestrator:
             最终阶段（DONE 或 ESCALATE）
         """
         self._run_start = time.time()
-        self._wal.append(WALEvent.RUN_START, {
-            "task": self._task_desc[:200],
-            "project": str(self._project_dir),
-        })
+        self._wal.append(
+            WALEvent.RUN_START,
+            {
+                "task": self._task_desc[:200],
+                "project": str(self._project_dir),
+            },
+        )
         self._log.info("run_started", run_id=self._run_id, task=self._task_desc[:100])
 
         # 创建 git 分支
@@ -142,11 +145,14 @@ class Orchestrator:
                 # 状态转移
                 try:
                     next_phase = self._sm.transition(outcome)
-                    self._wal.append(WALEvent.PHASE_COMPLETE, {
-                        "phase": phase.value,
-                        "outcome": outcome.value,
-                        "next": next_phase.value,
-                    })
+                    self._wal.append(
+                        WALEvent.PHASE_COMPLETE,
+                        {
+                            "phase": phase.value,
+                            "outcome": outcome.value,
+                            "next": next_phase.value,
+                        },
+                    )
                     self._log.info(
                         "phase_complete",
                         phase=phase.value,
@@ -185,12 +191,15 @@ class Orchestrator:
         duration = time.time() - self._run_start
 
         event = WALEvent.RUN_FAILED if abort_reason else WALEvent.RUN_COMPLETE
-        self._wal.append(event, {
-            "final_phase": final.value,
-            "duration_sec": round(duration, 1),
-            "total_cost_usd": round(self._budget.task_total, 4),
-            **({"reason": abort_reason} if abort_reason else {}),
-        })
+        self._wal.append(
+            event,
+            {
+                "final_phase": final.value,
+                "duration_sec": round(duration, 1),
+                "total_cost_usd": round(self._budget.task_total, 4),
+                **({"reason": abort_reason} if abort_reason else {}),
+            },
+        )
         self._log.info(
             "run_complete" if not abort_reason else "run_finalized_after_error",
             final_phase=final.value,
@@ -209,12 +218,15 @@ class Orchestrator:
         """执行单个阶段。"""
         config = self._sm.current_config()
 
-        self._wal.append(WALEvent.PHASE_START, {
-            "phase": phase.value,
-            "model": config.model,
-            "max_turns": config.max_turns,
-            "budget_usd": config.budget_usd,
-        })
+        self._wal.append(
+            WALEvent.PHASE_START,
+            {
+                "phase": phase.value,
+                "model": config.model,
+                "max_turns": config.max_turns,
+                "budget_usd": config.budget_usd,
+            },
+        )
         self._log.info("phase_started", phase=phase.value, model=config.model)
 
         # 构建 prompt（委托给 PromptBuilder）
@@ -280,12 +292,15 @@ class Orchestrator:
             qc_artifact.hard_check_passed = hard_result.passed
             qc_artifact.hard_check_details = hard_result.summary()
 
-            self._wal.append(WALEvent.QC_RESULT, {
-                "round": round_num,
-                "verdict": qc_artifact.verdict.value,
-                "hard_check": hard_result.passed,
-                "issues": len(qc_artifact.issues_found),
-            })
+            self._wal.append(
+                WALEvent.QC_RESULT,
+                {
+                    "round": round_num,
+                    "verdict": qc_artifact.verdict.value,
+                    "hard_check": hard_result.passed,
+                    "issues": len(qc_artifact.issues_found),
+                },
+            )
 
             if qc_artifact.is_pass and hard_result.passed:
                 return Outcome.SUCCESS
@@ -295,18 +310,14 @@ class Orchestrator:
                 self._rollback_execute()
                 # 带 QC 反馈重新执行
                 self._log.info("qc_failed_rerunning", round=round_num)
-                exec_outcome = self._run_execute_with_feedback(
-                    qc_path, round_num
-                )
+                exec_outcome = self._run_execute_with_feedback(qc_path, round_num)
                 if exec_outcome != Outcome.SUCCESS:
                     return exec_outcome
 
         # 所有 QC 轮次耗尽
         return Outcome.HARD_FAIL
 
-    def _run_execute_with_feedback(
-        self, qc_path: Path, attempt: int
-    ) -> Outcome:
+    def _run_execute_with_feedback(self, qc_path: Path, attempt: int) -> Outcome:
         """带 QC 反馈重新执行 EXECUTE 阶段。"""
         config = self._sm.current_config()
         feedback = self._bridge.build_qc_feedback_context(qc_path, attempt)
@@ -338,9 +349,7 @@ class Orchestrator:
         self._budget.add_cost(result.cost_usd)
         return self._analyze_result(Phase.EXECUTE, config, result)
 
-    def _analyze_result(
-        self, phase: Phase, config: PhaseConfig, result: ClaudeResult
-    ) -> Outcome:
+    def _analyze_result(self, phase: Phase, config: PhaseConfig, result: ClaudeResult) -> Outcome:
         """分析 Claude 执行结果，返回 Outcome。"""
         if result.timed_out:
             return Outcome.TIMEOUT

@@ -172,7 +172,7 @@ class TestStateMachineSerialization:
     def test_retry_counts_preserved(self):
         sm = StateMachine()
         sm.transition(Outcome.SOFT_FAIL)  # retry 1
-        sm.transition(Outcome.SUCCESS)    # → PLAN
+        sm.transition(Outcome.SUCCESS)  # → PLAN
         sm.transition(Outcome.SOFT_FAIL)  # retry 1 for PLAN
 
         data = sm.to_dict()

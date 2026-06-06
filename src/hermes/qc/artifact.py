@@ -24,9 +24,9 @@ class ArtifactVersion(StrEnum):
 
 
 class ConfidenceLevel(StrEnum):
-    HIGH = "high"      # > 0.8
+    HIGH = "high"  # > 0.8
     MEDIUM = "medium"  # 0.5 - 0.8
-    LOW = "low"        # < 0.5
+    LOW = "low"  # < 0.5
 
 
 class RiskSeverity(StrEnum):
@@ -87,13 +87,9 @@ class FindingsArtifact(BaseModel):
 
     schema_version: str = Field(default="1.0")
     key_findings: list[ResearchFinding] = Field(
-        ..., min_length=1, max_length=15,
-        description="核心发现（上限15条，第11轮分级策略）"
+        ..., min_length=1, max_length=15, description="核心发现（上限15条，第11轮分级策略）"
     )
-    files_in_scope: list[str] = Field(
-        default_factory=list,
-        description="影响范围内的文件列表"
-    )
+    files_in_scope: list[str] = Field(default_factory=list, description="影响范围内的文件列表")
     tech_stack: list[str] = Field(default_factory=list)
     risk_items: list[RiskItem] = Field(default_factory=list, max_length=10)
     scope_decision: str = Field(..., min_length=10, description="范围决策说明")
@@ -159,12 +155,9 @@ class ExecutionPlanArtifact(BaseModel):
 
     schema_version: str = Field(default="1.0")
     steps: list[ExecutionStep] = Field(
-        ..., min_length=1, max_length=12,
-        description="执行步骤（≤12步，每步≤3文件）"
+        ..., min_length=1, max_length=12, description="执行步骤（≤12步，每步≤3文件）"
     )
-    acceptance_criteria: list[str] = Field(
-        ..., min_length=1, max_length=10
-    )
+    acceptance_criteria: list[str] = Field(..., min_length=1, max_length=10)
     estimated_complexity: TaskComplexity = TaskComplexity.MEDIUM
     checkpoint: bool = Field(default=False, description="安全断点标记")
     estimated_tokens: int = Field(default=0, ge=0)
@@ -172,9 +165,7 @@ class ExecutionPlanArtifact(BaseModel):
 
     def tier1_summary(self) -> str:
         """Tier 1：步骤概览。"""
-        steps_brief = "; ".join(
-            f"Step{s.id}:{s.step_type.value}" for s in self.steps[:6]
-        )
+        steps_brief = "; ".join(f"Step{s.id}:{s.step_type.value}" for s in self.steps[:6])
         return (
             f"Plan: {len(self.steps)} steps, complexity={self.estimated_complexity.value}\n"
             f"Steps: {steps_brief[:400]}\n"

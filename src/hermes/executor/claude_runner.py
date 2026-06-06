@@ -163,7 +163,7 @@ class ClaudeRunner:
             except ClaudeNetworkError as e:
                 last_error = e
                 if attempt < max_network_retries:
-                    backoff = backoff_base * (2 ** attempt)
+                    backoff = backoff_base * (2**attempt)
                     self._log.warn(
                         "network_retry",
                         attempt=attempt + 1,
@@ -283,6 +283,7 @@ class ClaudeRunner:
     def _get_env(self) -> dict[str, str]:
         """获取环境变量。"""
         import os
+
         env = dict(os.environ)
         # 确保不继承交互模式设置
         env.pop("CLAUDE_CODE_ENTRY", None)
@@ -296,10 +297,9 @@ class ClaudeRunner:
             if usage:
                 for model_name, model_data in usage.items():
                     if isinstance(model_data, dict):
-                        result.tokens_used[model_name] = (
-                            model_data.get("inputTokens", 0)
-                            + model_data.get("outputTokens", 0)
-                        )
+                        result.tokens_used[model_name] = model_data.get(
+                            "inputTokens", 0
+                        ) + model_data.get("outputTokens", 0)
 
     def _detect_refusal(self, stdout: str, stderr: str, exit_code: int) -> bool:
         """检测 Claude 是否拒绝执行（第11轮边界案例）。"""
@@ -325,7 +325,8 @@ class ClaudeRunner:
 
         # Layer 2: 提取 JSON 块
         import re
-        json_match = re.search(r'\{[\s\S]*\}', text)
+
+        json_match = re.search(r"\{[\s\S]*\}", text)
         if json_match:
             try:
                 return json.loads(json_match.group())
@@ -333,10 +334,10 @@ class ClaudeRunner:
                 pass
 
         # Layer 3: 尝试补全括号
-        open_braces = text.count('{') - text.count('}')
+        open_braces = text.count("{") - text.count("}")
         if open_braces > 0:
             try:
-                return json.loads(text + '}' * open_braces)
+                return json.loads(text + "}" * open_braces)
             except json.JSONDecodeError:
                 pass
 

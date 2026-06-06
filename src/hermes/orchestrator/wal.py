@@ -48,6 +48,7 @@ class WALEntry:
 
 # ─── WAL 事件类型 ──────────────────────────────────────────
 
+
 class WALEvent:
     """标准事件名称。"""
 
@@ -171,9 +172,7 @@ class WriteAheadLog:
                 try:
                     entry = WALEntry.from_json(line)
                 except (json.JSONDecodeError, TypeError) as e:
-                    raise WALCorruptionError(
-                        f"Line {line_no}: invalid JSON: {e}"
-                    ) from e
+                    raise WALCorruptionError(f"Line {line_no}: invalid JSON: {e}") from e
 
                 # 验证 hash 链
                 if entry.prev_hash != expected_hash:

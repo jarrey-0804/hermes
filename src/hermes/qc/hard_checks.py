@@ -51,14 +51,14 @@ class HardCheckReport:
 # ─── Secrets 检测模式 ──────────────────────────────────────
 
 _SECRET_PATTERNS = [
-    (r'AKIA[0-9A-Z]{16}', "AWS Access Key"),
+    (r"AKIA[0-9A-Z]{16}", "AWS Access Key"),
     (r'(?:password|passwd|pwd)\s*[=:]\s*["\']?[^\s"\']{8,}', "Password in code"),
     (r'(?:api[_-]?key|apikey)\s*[=:]\s*["\']?[^\s"\']{16,}', "API Key"),
     (r'(?:secret|token)\s*[=:]\s*["\']?[^\s"\']{16,}', "Secret/Token"),
-    (r'-----BEGIN (?:RSA |EC )?PRIVATE KEY-----', "Private Key"),
-    (r'ghp_[0-9a-zA-Z]{36}', "GitHub Personal Token"),
-    (r'sk-[0-9a-zA-Z]{48}', "OpenAI API Key"),
-    (r'xox[bpsar]-[0-9a-zA-Z-]{10,}', "Slack Token"),
+    (r"-----BEGIN (?:RSA |EC )?PRIVATE KEY-----", "Private Key"),
+    (r"ghp_[0-9a-zA-Z]{36}", "GitHub Personal Token"),
+    (r"sk-[0-9a-zA-Z]{48}", "OpenAI API Key"),
+    (r"xox[bpsar]-[0-9a-zA-Z-]{10,}", "Slack Token"),
 ]
 
 
@@ -132,7 +132,7 @@ class HardChecks:
     def check_todo_fixme(self, changed_files: list[str]) -> CheckResult:
         """扫描新增的 TODO/FIXME 标记。"""
         todos_found: list[str] = []
-        pattern = re.compile(r'\b(TODO|FIXME|HACK|XXX|BUG)\b', re.IGNORECASE)
+        pattern = re.compile(r"\b(TODO|FIXME|HACK|XXX|BUG)\b", re.IGNORECASE)
 
         for file_path in changed_files:
             full_path = self._project_dir / file_path
@@ -151,7 +151,7 @@ class HardChecks:
                 continue
 
         if todos_found:
-            markers = ', '.join(todos_found[:5])
+            markers = ", ".join(todos_found[:5])
             return CheckResult(
                 name="todo_fixme",
                 passed=False,
@@ -191,11 +191,29 @@ class HardChecks:
     def check_binary_files(self, changed_files: list[str]) -> CheckResult:
         """检测新增的二进制文件。"""
         binary_extensions = {
-            ".exe", ".dll", ".so", ".dylib", ".a", ".o",
-            ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".ico",
-            ".zip", ".tar", ".gz", ".bz2", ".xz",
-            ".pdf", ".doc", ".docx",
-            ".pyc", ".pyo", ".class",
+            ".exe",
+            ".dll",
+            ".so",
+            ".dylib",
+            ".a",
+            ".o",
+            ".png",
+            ".jpg",
+            ".jpeg",
+            ".gif",
+            ".bmp",
+            ".ico",
+            ".zip",
+            ".tar",
+            ".gz",
+            ".bz2",
+            ".xz",
+            ".pdf",
+            ".doc",
+            ".docx",
+            ".pyc",
+            ".pyo",
+            ".class",
         }
         binaries: list[str] = []
 
@@ -257,4 +275,5 @@ class HardChecks:
     def _is_excluded(self, file_path: str) -> bool:
         """检查文件是否在排除列表中。"""
         import fnmatch
+
         return any(fnmatch.fnmatch(file_path, p) for p in self._exclude)

@@ -256,15 +256,11 @@ class StateMachine:
             MaxRetriesExceeded: 重试次数耗尽
         """
         if self._phase.is_terminal:
-            raise TransitionError(
-                f"Cannot transition from terminal phase {self._phase.value}"
-            )
+            raise TransitionError(f"Cannot transition from terminal phase {self._phase.value}")
 
         phase_transitions = _TRANSITIONS.get(self._phase)
         if not phase_transitions or outcome not in phase_transitions:
-            raise TransitionError(
-                f"No transition defined: {self._phase.value} + {outcome.value}"
-            )
+            raise TransitionError(f"No transition defined: {self._phase.value} + {outcome.value}")
 
         next_phase = phase_transitions[outcome]
 
@@ -302,8 +298,7 @@ class StateMachine:
             "phase": self._phase.value,
             "retry_counts": {k.value: v for k, v in self._retry_counts.items()},
             "history": [
-                {"from": f.value, "outcome": o.value, "to": t.value}
-                for f, o, t in self._history
+                {"from": f.value, "outcome": o.value, "to": t.value} for f, o, t in self._history
             ],
         }
 
@@ -316,9 +311,7 @@ class StateMachine:
             initial_phase=Phase(data["phase"]),
             phase_configs=phase_configs,
         )
-        sm._retry_counts = {
-            Phase(k): v for k, v in data.get("retry_counts", {}).items()
-        }
+        sm._retry_counts = {Phase(k): v for k, v in data.get("retry_counts", {}).items()}
         sm._history = [
             (Phase(h["from"]), Outcome(h["outcome"]), Phase(h["to"]))
             for h in data.get("history", [])

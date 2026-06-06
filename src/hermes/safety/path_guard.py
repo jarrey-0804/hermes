@@ -205,8 +205,7 @@ class InjectionScanner:
     ) -> None:
         self._patterns = INJECTION_PATTERNS + (custom_patterns or [])
         self._compiled = [
-            (name, re.compile(pattern), severity)
-            for name, pattern, severity in self._patterns
+            (name, re.compile(pattern), severity) for name, pattern, severity in self._patterns
         ]
 
     def scan(self, text: str) -> list[InjectionMatch]:
@@ -255,6 +254,4 @@ class InjectionScanner:
         severity_order = {"low": 0, "medium": 1, "high": 2, "critical": 3}
         threshold = severity_order.get(max_severity, 2)
         matches = self.scan(text)
-        return all(
-            severity_order.get(m.severity, 0) <= threshold for m in matches
-        )
+        return all(severity_order.get(m.severity, 0) <= threshold for m in matches)

@@ -21,7 +21,7 @@ from hermes.observability.logger import get_logger
 
 
 class ModelConfig(BaseModel):
-    model_config = ConfigDict(extra='forbid')
+    model_config = ConfigDict(extra="forbid")
 
     default: str = "sonnet"
     research: str = "haiku"
@@ -31,7 +31,7 @@ class ModelConfig(BaseModel):
 
 
 class StageConfig(BaseModel):
-    model_config = ConfigDict(extra='forbid')
+    model_config = ConfigDict(extra="forbid")
 
     timeout_sec: int = Field(default=900, ge=60, le=7200)
     max_turns: int = Field(default=8, ge=1, le=50)
@@ -44,56 +44,109 @@ class StageConfig(BaseModel):
 
 
 class StagesConfig(BaseModel):
-    model_config = ConfigDict(extra='forbid')
+    model_config = ConfigDict(extra="forbid")
 
-    research: StageConfig = Field(default_factory=lambda: StageConfig(
-        timeout_sec=900, max_turns=8, max_retries=1, budget_usd=1.0,
-        model="haiku",
-        allowed_tools=["Read", "Glob", "Grep", "Write",
-                        "Bash(git log:*)", "Bash(git diff HEAD:*)"],
-        required_output="research/findings.json",
-    ))
-    plan: StageConfig = Field(default_factory=lambda: StageConfig(
-        timeout_sec=600, max_turns=6, max_retries=1, budget_usd=1.5,
-        model="sonnet",
-        allowed_tools=["Read", "Glob", "Grep", "Write",
-                        "Bash(git log:*)", "Bash(git diff HEAD:*)"],
-        required_output="plan/execution-plan.json",
-    ))
-    execute: StageConfig = Field(default_factory=lambda: StageConfig(
-        timeout_sec=1800, max_turns=12, max_retries=2, budget_usd=3.0,
-        model="sonnet",
-        allowed_tools=["Read", "Glob", "Grep", "Write", "Edit",
-                        "Bash(npm run:*)", "Bash(python src/:*)",
-                        "Bash(pytest:*)", "Bash(git diff HEAD:*)"],
-    ))
-    qc: StageConfig = Field(default_factory=lambda: StageConfig(
-        timeout_sec=600, max_turns=4, max_retries=0, budget_usd=0.5,
-        model="haiku", permission_mode="plan",
-        allowed_tools=["Read", "Glob", "Grep", "Write",
-                        "Bash(git diff HEAD:*)", "Bash(pytest:*)"],
-        required_output="qc/qc-result.json",
-    ))
+    research: StageConfig = Field(
+        default_factory=lambda: StageConfig(
+            timeout_sec=900,
+            max_turns=8,
+            max_retries=1,
+            budget_usd=1.0,
+            model="haiku",
+            allowed_tools=[
+                "Read",
+                "Glob",
+                "Grep",
+                "Write",
+                "Bash(git log:*)",
+                "Bash(git diff HEAD:*)",
+            ],
+            required_output="research/findings.json",
+        )
+    )
+    plan: StageConfig = Field(
+        default_factory=lambda: StageConfig(
+            timeout_sec=600,
+            max_turns=6,
+            max_retries=1,
+            budget_usd=1.5,
+            model="sonnet",
+            allowed_tools=[
+                "Read",
+                "Glob",
+                "Grep",
+                "Write",
+                "Bash(git log:*)",
+                "Bash(git diff HEAD:*)",
+            ],
+            required_output="plan/execution-plan.json",
+        )
+    )
+    execute: StageConfig = Field(
+        default_factory=lambda: StageConfig(
+            timeout_sec=1800,
+            max_turns=12,
+            max_retries=2,
+            budget_usd=3.0,
+            model="sonnet",
+            allowed_tools=[
+                "Read",
+                "Glob",
+                "Grep",
+                "Write",
+                "Edit",
+                "Bash(npm run:*)",
+                "Bash(python src/:*)",
+                "Bash(pytest:*)",
+                "Bash(git diff HEAD:*)",
+            ],
+        )
+    )
+    qc: StageConfig = Field(
+        default_factory=lambda: StageConfig(
+            timeout_sec=600,
+            max_turns=4,
+            max_retries=0,
+            budget_usd=0.5,
+            model="haiku",
+            permission_mode="plan",
+            allowed_tools=[
+                "Read",
+                "Glob",
+                "Grep",
+                "Write",
+                "Bash(git diff HEAD:*)",
+                "Bash(pytest:*)",
+            ],
+            required_output="qc/qc-result.json",
+        )
+    )
 
 
 class QCRulesConfig(BaseModel):
-    model_config = ConfigDict(extra='forbid')
+    model_config = ConfigDict(extra="forbid")
 
     max_diff_lines: int = Field(default=500, ge=50, le=5000)
     check_secrets: bool = True
     check_binary_files: bool = True
     check_todo_fixme: bool = True
-    protected_files: list[str] = Field(default_factory=lambda: [
-        ".env", ".env.*", "**/credentials*", "**/*.pem", "**/*.key"
-    ])
-    exclude_patterns: list[str] = Field(default_factory=lambda: [
-        "node_modules/**", ".git/**", "__pycache__/**", "*.pyc",
-        "dist/**", "build/**",
-    ])
+    protected_files: list[str] = Field(
+        default_factory=lambda: [".env", ".env.*", "**/credentials*", "**/*.pem", "**/*.key"]
+    )
+    exclude_patterns: list[str] = Field(
+        default_factory=lambda: [
+            "node_modules/**",
+            ".git/**",
+            "__pycache__/**",
+            "*.pyc",
+            "dist/**",
+            "build/**",
+        ]
+    )
 
 
 class BudgetConfig(BaseModel):
-    model_config = ConfigDict(extra='forbid')
+    model_config = ConfigDict(extra="forbid")
 
     max_per_task_usd: float = Field(default=5.0, ge=0.5, le=100.0)
     max_daily_usd: float = Field(default=50.0, ge=5.0, le=1000.0)
@@ -102,7 +155,7 @@ class BudgetConfig(BaseModel):
 
 
 class DockerConfig(BaseModel):
-    model_config = ConfigDict(extra='forbid')
+    model_config = ConfigDict(extra="forbid")
 
     enabled: bool = False
     image: str = "hermes-agent:latest"
@@ -114,18 +167,27 @@ class DockerConfig(BaseModel):
 
 
 class SecurityConfig(BaseModel):
-    model_config = ConfigDict(extra='forbid')
+    model_config = ConfigDict(extra="forbid")
 
     webfetch_whitelist: list[str] = Field(default_factory=list)
-    forbidden_git_ops: list[str] = Field(default_factory=lambda: [
-        "checkout", "add", "commit", "reset", "stash",
-        "merge", "rebase", "push", "fetch",
-    ])
+    forbidden_git_ops: list[str] = Field(
+        default_factory=lambda: [
+            "checkout",
+            "add",
+            "commit",
+            "reset",
+            "stash",
+            "merge",
+            "rebase",
+            "push",
+            "fetch",
+        ]
+    )
     max_file_size_kb: int = Field(default=1024, ge=64, le=10240)
 
 
 class SOPConfig(BaseModel):
-    model_config = ConfigDict(extra='forbid')
+    model_config = ConfigDict(extra="forbid")
 
     enabled: bool = False
     ttl_days: int = Field(default=7, ge=1, le=90)
@@ -134,30 +196,28 @@ class SOPConfig(BaseModel):
 
 
 class HeartbeatConfig(BaseModel):
-    model_config = ConfigDict(extra='forbid')
+    model_config = ConfigDict(extra="forbid")
 
     interval_sec: int = Field(default=10, ge=5, le=60)
     timeout_sec: int = Field(default=30, ge=15, le=120)
 
 
 class QueueConfig(BaseModel):
-    model_config = ConfigDict(extra='forbid')
+    model_config = ConfigDict(extra="forbid")
 
     max_concurrent: int = Field(default=1, ge=1, le=32)
-    priorities: list[str] = Field(
-        default_factory=lambda: ["SYSTEM", "URGENT", "NORMAL", "LOW"]
-    )
+    priorities: list[str] = Field(default_factory=lambda: ["SYSTEM", "URGENT", "NORMAL", "LOW"])
 
 
 class NotificationsConfig(BaseModel):
-    model_config = ConfigDict(extra='forbid')
+    model_config = ConfigDict(extra="forbid")
 
     enabled: bool = False
     slack_webhook_env: str = "SLACK_WEBHOOK_URL"
 
 
 class DashboardConfig(BaseModel):
-    model_config = ConfigDict(extra='forbid')
+    model_config = ConfigDict(extra="forbid")
 
     enabled: bool = False
     port: int = Field(default=8080, ge=1024, le=65535)
@@ -165,7 +225,7 @@ class DashboardConfig(BaseModel):
 
 
 class GitConfig(BaseModel):
-    model_config = ConfigDict(extra='forbid')
+    model_config = ConfigDict(extra="forbid")
 
     branch_prefix: str = "auto/"
     pre_receive_hook: bool = False
@@ -173,7 +233,7 @@ class GitConfig(BaseModel):
 
 
 class GeneralConfig(BaseModel):
-    model_config = ConfigDict(extra='forbid')
+    model_config = ConfigDict(extra="forbid")
 
     project_dir: str = "/workspace"
     data_dir: str = "./runs"
@@ -185,7 +245,7 @@ class GeneralConfig(BaseModel):
 
 
 class HermesConfig(BaseModel):
-    model_config = ConfigDict(extra='forbid')
+    model_config = ConfigDict(extra="forbid")
     """Hermes 统一配置（hermes.yaml）。"""
 
     general: GeneralConfig = Field(default_factory=GeneralConfig)
@@ -249,9 +309,7 @@ class ValidationResult:
         return len(self.errors) == 0
 
     def summary(self) -> str:
-        return (
-            f"Validation: {len(self.errors)} errors, {len(self.warnings)} warnings"
-        )
+        return f"Validation: {len(self.errors)} errors, {len(self.warnings)} warnings"
 
 
 class ConfigValidator:
@@ -281,8 +339,9 @@ class ConfigValidator:
         if result.is_valid:
             self._log.info("config_valid", errors=0, warnings=len(result.warnings))
         else:
-            self._log.error("config_invalid", errors=len(result.errors),
-                           warnings=len(result.warnings))
+            self._log.error(
+                "config_invalid", errors=len(result.errors), warnings=len(result.warnings)
+            )
 
         return result
 
@@ -293,8 +352,7 @@ class ConfigValidator:
         # EXECUTE 阶段超时不应小于 RESEARCH
         if cfg.stages.execute.timeout_sec < cfg.stages.research.timeout_sec:
             result.add_warning(
-                "EXECUTE timeout < RESEARCH timeout. "
-                "Consider increasing EXECUTE timeout."
+                "EXECUTE timeout < RESEARCH timeout. Consider increasing EXECUTE timeout."
             )
 
         # 预算合理性
@@ -312,48 +370,36 @@ class ConfigValidator:
 
         # QC 阶段应该是只读的
         if cfg.stages.qc.permission_mode != "plan":
-            result.add_warning(
-                "QC stage permission_mode should be 'plan' (read-only)"
-            )
+            result.add_warning("QC stage permission_mode should be 'plan' (read-only)")
 
         # 心跳超时应大于间隔
         if cfg.heartbeat.timeout_sec <= cfg.heartbeat.interval_sec:
-            result.add_error(
-                "heartbeat.timeout_sec must be > heartbeat.interval_sec"
-            )
+            result.add_error("heartbeat.timeout_sec must be > heartbeat.interval_sec")
 
     def _check_env_vars(self, result: ValidationResult) -> None:
         """检查环境变量。"""
         # ANTHROPIC_API_KEY 必须存在
         if not os.environ.get("ANTHROPIC_API_KEY"):
-            result.add_warning(
-                "ANTHROPIC_API_KEY not set. Claude CLI calls will fail."
-            )
+            result.add_warning("ANTHROPIC_API_KEY not set. Claude CLI calls will fail.")
 
         # 通知相关
         if self._config.notifications.enabled:
             env_name = self._config.notifications.slack_webhook_env
             if not os.environ.get(env_name):
-                result.add_warning(
-                    f"Notifications enabled but {env_name} not set"
-                )
+                result.add_warning(f"Notifications enabled but {env_name} not set")
 
     def _check_paths(self, result: ValidationResult) -> None:
         """检查路径可达性。"""
         project_dir = Path(self._config.general.project_dir)
         if not project_dir.exists():
-            result.add_warning(
-                f"project_dir does not exist: {project_dir}"
-            )
+            result.add_warning(f"project_dir does not exist: {project_dir}")
 
     def _check_tool_whitelist(self, result: ValidationResult) -> None:
         """检查工具白名单合理性。"""
         # RESEARCH 不应包含 Write/Edit（除了 artifact 输出）
         research_tools = self._config.stages.research.allowed_tools
         if "Edit" in research_tools:
-            result.add_warning(
-                "RESEARCH stage has 'Edit' tool. RESEARCH should be read-only."
-            )
+            result.add_warning("RESEARCH stage has 'Edit' tool. RESEARCH should be read-only.")
 
         # 检查危险 git 操作不在白名单中
         forbidden = set(self._config.security.forbidden_git_ops)
@@ -366,14 +412,10 @@ class ConfigValidator:
                 if match:
                     op = match.group(1)
                     if op in forbidden:
-                        result.add_error(
-                            f"{stage_name} stage has forbidden git op: {tool}"
-                        )
+                        result.add_error(f"{stage_name} stage has forbidden git op: {tool}")
 
     def _check_budget_sanity(self, result: ValidationResult) -> None:
         """检查预算配置合理性。"""
         cfg = self._config
         if cfg.budget.max_daily_usd < cfg.budget.max_per_task_usd:
-            result.add_error(
-                "max_daily_usd must be >= max_per_task_usd"
-            )
+            result.add_error("max_daily_usd must be >= max_per_task_usd")

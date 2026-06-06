@@ -50,9 +50,7 @@ class TestConfigShowCommand:
 
     def test_config_show_custom(self, tmp_path: Path):
         config_file = tmp_path / "hermes.yaml"
-        config_file.write_text(
-            "general:\n  project_dir: /custom/path\n  data_dir: /custom/runs\n"
-        )
+        config_file.write_text("general:\n  project_dir: /custom/path\n  data_dir: /custom/runs\n")
         result = runner.invoke(app, ["config", "show", "--config", str(config_file)])
         assert result.exit_code == 0
 
@@ -62,17 +60,14 @@ class TestConfigValidateCommand:
 
     def test_config_validate_valid(self, tmp_path: Path):
         config_file = tmp_path / "hermes.yaml"
-        config_file.write_text(
-            "general:\n  project_dir: /tmp\n  data_dir: /tmp/runs\n"
-        )
+        config_file.write_text("general:\n  project_dir: /tmp\n  data_dir: /tmp/runs\n")
         result = runner.invoke(app, ["config", "validate", "--config", str(config_file)])
         assert result.exit_code == 0
         assert "valid" in result.stdout.lower()
 
     def test_config_validate_missing_file(self, tmp_path: Path):
         result = runner.invoke(
-            app,
-            ["config", "validate", "--config", str(tmp_path / "missing.yaml")]
+            app, ["config", "validate", "--config", str(tmp_path / "missing.yaml")]
         )
         # Should succeed with defaults (logs warning)
         assert result.exit_code == 0
@@ -103,7 +98,7 @@ class TestStatusCommand:
                     {"from": "research", "outcome": "success", "to": "plan"},
                     {"from": "plan", "outcome": "success", "to": "execute"},
                 ]
-            }
+            },
         }
         state_file.write_text(json.dumps(state))
 
@@ -176,26 +171,16 @@ class TestRunCommand:
 
     def test_run_dry_run(self, tmp_path: Path):
         config_file = tmp_path / "hermes.yaml"
-        config_file.write_text(
-            "general:\n  project_dir: /tmp\n  data_dir: /tmp/runs\n"
-        )
-        result = runner.invoke(
-            app,
-            ["run", "test task", "--config", str(config_file), "--dry-run"]
-        )
+        config_file.write_text("general:\n  project_dir: /tmp\n  data_dir: /tmp/runs\n")
+        result = runner.invoke(app, ["run", "test task", "--config", str(config_file), "--dry-run"])
         assert result.exit_code == 0
         assert "Dry run complete" in result.stdout
 
     def test_run_invalid_config(self, tmp_path: Path):
         # Create config with invalid heartbeat settings
         config_file = tmp_path / "hermes.yaml"
-        config_file.write_text(
-            "heartbeat:\n  interval_sec: 30\n  timeout_sec: 10\n"
-        )
-        result = runner.invoke(
-            app,
-            ["run", "test task", "--config", str(config_file), "--dry-run"]
-        )
+        config_file.write_text("heartbeat:\n  interval_sec: 30\n  timeout_sec: 10\n")
+        result = runner.invoke(app, ["run", "test task", "--config", str(config_file), "--dry-run"])
         assert result.exit_code == 1
         # Error may be in stdout or exception
         assert "error" in result.stdout.lower() or result.exception is not None
@@ -235,6 +220,7 @@ class TestHelperFunctions:
 
         # Make run2 newer
         import time
+
         time.sleep(0.1)
         state2.touch()
 
@@ -253,7 +239,7 @@ class TestHelperFunctions:
                 "history": [
                     {"from": "research", "outcome": "success", "to": "plan"},
                 ]
-            }
+            },
         }
         _print_task_status(state)
         captured = capsys.readouterr()

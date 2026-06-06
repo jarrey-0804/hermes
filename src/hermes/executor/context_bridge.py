@@ -23,9 +23,9 @@ from hermes.qc.artifact import (
 class ContextBudget(str):
     """上下文字符预算等级。"""
 
-    COMPACT = 4000    # 基础
+    COMPACT = 4000  # 基础
     EXTENDED = 12000  # 扩展
-    FULL = 30000      # 完整
+    FULL = 30000  # 完整
 
 
 DEFAULT_BUDGET = 4000

@@ -27,8 +27,7 @@ def _block_real_api_calls(monkeypatch: pytest.MonkeyPatch):
             cmd_str = str(cmd[0])
             if "claude" in cmd_str:
                 raise RuntimeError(
-                    "Blocked: real Claude API call in test. "
-                    "Set HERMES_ALLOW_REAL_API=1 to allow."
+                    "Blocked: real Claude API call in test. Set HERMES_ALLOW_REAL_API=1 to allow."
                 )
             # 允许 git 命令（用于 git_ops 测试）
             if "git" in cmd_str:

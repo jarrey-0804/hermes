@@ -30,12 +30,8 @@ console = Console()
 @app.command()
 def run(
     task: str = typer.Argument(..., help="任务描述"),
-    project_dir: Path = typer.Option(
-        Path("."), "--project", "-p", help="项目目录"
-    ),
-    config: Path = typer.Option(
-        Path("config/hermes.yaml"), "--config", "-c", help="配置文件路径"
-    ),
+    project_dir: Path = typer.Option(Path("."), "--project", "-p", help="项目目录"),
+    config: Path = typer.Option(Path("config/hermes.yaml"), "--config", "-c", help="配置文件路径"),
     model: str | None = typer.Option(None, "--model", "-m", help="覆盖默认模型"),
     budget: float | None = typer.Option(None, "--budget", "-b", help="预算上限 USD"),
     dry_run: bool = typer.Option(False, "--dry-run", help="仅验证配置，不执行"),
@@ -167,9 +163,7 @@ app.add_typer(config_app, name="config")
 
 @config_app.command("show")
 def config_show(
-    config_path: Path = typer.Option(
-        Path("config/hermes.yaml"), "--config", "-c"
-    ),
+    config_path: Path = typer.Option(Path("config/hermes.yaml"), "--config", "-c"),
 ) -> None:
     """显示当前配置。"""
     from hermes.utils.config import HermesConfig
@@ -180,9 +174,7 @@ def config_show(
 
 @config_app.command("validate")
 def config_validate(
-    config_path: Path = typer.Option(
-        Path("config/hermes.yaml"), "--config", "-c"
-    ),
+    config_path: Path = typer.Option(Path("config/hermes.yaml"), "--config", "-c"),
 ) -> None:
     """验证配置文件。"""
     from hermes.utils.config import ConfigValidator, HermesConfig
@@ -240,6 +232,7 @@ def doctor() -> None:
 
     # API Key
     import os
+
     has_key = bool(os.environ.get("ANTHROPIC_API_KEY"))
     checks.append(("ANTHROPIC_API_KEY", has_key, "set" if has_key else "not set"))
 
@@ -319,9 +312,7 @@ def _print_task_status(state: dict) -> None:
     if history:
         console.print("\n[bold]Phase History:[/bold]")
         for h in history:
-            console.print(
-                f"  {h['from']} → {h['outcome']} → {h['to']}"
-            )
+            console.print(f"  {h['from']} → {h['outcome']} → {h['to']}")
 
 
 if __name__ == "__main__":
