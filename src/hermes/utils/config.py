@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 import yaml
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from hermes.observability.logger import get_logger
 
@@ -23,6 +23,8 @@ from hermes.observability.logger import get_logger
 
 
 class ModelConfig(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+
     default: str = "sonnet"
     research: str = "haiku"
     plan: str = "sonnet"
@@ -31,6 +33,8 @@ class ModelConfig(BaseModel):
 
 
 class StageConfig(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+
     timeout_sec: int = Field(default=900, ge=60, le=7200)
     max_turns: int = Field(default=8, ge=1, le=50)
     max_retries: int = Field(default=1, ge=0, le=5)
@@ -42,6 +46,8 @@ class StageConfig(BaseModel):
 
 
 class StagesConfig(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+
     research: StageConfig = Field(default_factory=lambda: StageConfig(
         timeout_sec=900, max_turns=8, max_retries=1, budget_usd=1.0,
         model="haiku",
@@ -73,6 +79,8 @@ class StagesConfig(BaseModel):
 
 
 class QCRulesConfig(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+
     max_diff_lines: int = Field(default=500, ge=50, le=5000)
     check_secrets: bool = True
     check_binary_files: bool = True
@@ -87,6 +95,8 @@ class QCRulesConfig(BaseModel):
 
 
 class BudgetConfig(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+
     max_per_task_usd: float = Field(default=5.0, ge=0.5, le=100.0)
     max_daily_usd: float = Field(default=50.0, ge=5.0, le=1000.0)
     alert_threshold_pct: int = Field(default=80, ge=50, le=100)
@@ -94,6 +104,8 @@ class BudgetConfig(BaseModel):
 
 
 class DockerConfig(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+
     enabled: bool = False
     image: str = "hermes-agent:latest"
     memory: str = "4g"
@@ -104,6 +116,8 @@ class DockerConfig(BaseModel):
 
 
 class SecurityConfig(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+
     webfetch_whitelist: list[str] = Field(default_factory=list)
     forbidden_git_ops: list[str] = Field(default_factory=lambda: [
         "checkout", "add", "commit", "reset", "stash",
@@ -113,6 +127,8 @@ class SecurityConfig(BaseModel):
 
 
 class SOPConfig(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+
     enabled: bool = False
     ttl_days: int = Field(default=7, ge=1, le=90)
     approval_sla_hours: int = Field(default=48, ge=1, le=168)
@@ -120,11 +136,15 @@ class SOPConfig(BaseModel):
 
 
 class HeartbeatConfig(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+
     interval_sec: int = Field(default=10, ge=5, le=60)
     timeout_sec: int = Field(default=30, ge=15, le=120)
 
 
 class QueueConfig(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+
     max_concurrent: int = Field(default=1, ge=1, le=32)
     priorities: list[str] = Field(
         default_factory=lambda: ["SYSTEM", "URGENT", "NORMAL", "LOW"]
@@ -132,23 +152,31 @@ class QueueConfig(BaseModel):
 
 
 class NotificationsConfig(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+
     enabled: bool = False
     slack_webhook_env: str = "SLACK_WEBHOOK_URL"
 
 
 class DashboardConfig(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+
     enabled: bool = False
     port: int = Field(default=8080, ge=1024, le=65535)
     refresh_sec: int = Field(default=30, ge=5, le=300)
 
 
 class GitConfig(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+
     branch_prefix: str = "auto/"
     pre_receive_hook: bool = False
     auto_commit: bool = False
 
 
 class GeneralConfig(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+
     project_dir: str = "/workspace"
     data_dir: str = "./runs"
     log_level: str = "INFO"
@@ -159,6 +187,7 @@ class GeneralConfig(BaseModel):
 
 
 class HermesConfig(BaseModel):
+    model_config = ConfigDict(extra='forbid')
     """Hermes 统一配置（hermes.yaml）。"""
 
     general: GeneralConfig = Field(default_factory=GeneralConfig)

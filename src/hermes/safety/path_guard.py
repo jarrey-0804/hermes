@@ -242,10 +242,20 @@ class InjectionScanner:
             return []
 
     def is_safe(self, text: str, max_severity: str = "high") -> bool:
-        """快速检查文本是否安全（无高严重度以上匹配）。"""
+        """快速检查文本是否安全（无超过 max_severity 的匹配）。
+
+        Args:
+            text: 要检查的文本
+            max_severity: 允许的最高严重度（"low", "medium", "high", "critical"）
+                         例如 max_severity="high" 表示允许 low/medium/high，
+                         但 critical 会被认为不安全
+
+        Returns:
+            True if all matches have severity <= max_severity
+        """
         severity_order = {"low": 0, "medium": 1, "high": 2, "critical": 3}
         threshold = severity_order.get(max_severity, 2)
         matches = self.scan(text)
         return all(
-            severity_order.get(m.severity, 0) < threshold for m in matches
+            severity_order.get(m.severity, 0) <= threshold for m in matches
         )
