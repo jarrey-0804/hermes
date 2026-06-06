@@ -1,10 +1,8 @@
 """Tests for observability.logger module."""
 
-import logging
 from pathlib import Path
 
 import pytest
-import structlog
 
 from hermes.observability.logger import (
     bind_context,

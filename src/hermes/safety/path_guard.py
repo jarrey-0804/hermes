@@ -12,7 +12,6 @@ import fnmatch
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 
 @dataclass
@@ -77,8 +76,8 @@ class PathGuard:
     def __init__(
         self,
         project_dir: Path,
-        protected_files: Optional[list[str]] = None,
-        exclude_patterns: Optional[list[str]] = None,
+        protected_files: list[str] | None = None,
+        exclude_patterns: list[str] | None = None,
     ) -> None:
         self._project_dir = project_dir.resolve()
         self._protected = protected_files or self.SUSPICIOUS_PATTERNS
@@ -202,7 +201,7 @@ class InjectionScanner:
 
     def __init__(
         self,
-        custom_patterns: Optional[list[tuple[str, str, str]]] = None,
+        custom_patterns: list[tuple[str, str, str]] | None = None,
     ) -> None:
         self._patterns = INJECTION_PATTERNS + (custom_patterns or [])
         self._compiled = [

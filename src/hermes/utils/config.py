@@ -11,13 +11,11 @@ from __future__ import annotations
 import os
 import re
 from pathlib import Path
-from typing import Any, Optional
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field
 
 from hermes.observability.logger import get_logger
-
 
 # ─── 子模型 ────────────────────────────────────────────────
 
@@ -42,7 +40,7 @@ class StageConfig(BaseModel):
     model: str = "sonnet"
     permission_mode: str = "default"
     allowed_tools: list[str] = Field(default_factory=list)
-    required_output: Optional[str] = None
+    required_output: str | None = None
 
 
 class StagesConfig(BaseModel):

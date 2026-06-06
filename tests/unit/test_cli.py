@@ -2,12 +2,10 @@
 
 import json
 from pathlib import Path
-from unittest.mock import MagicMock, patch
 
-import pytest
 from typer.testing import CliRunner
 
-from hermes.cli import app, _find_latest_state, _print_task_status
+from hermes.cli import _find_latest_state, _print_task_status, app
 
 runner = CliRunner()
 
@@ -44,7 +42,8 @@ class TestConfigShowCommand:
     """Test config show command."""
 
     def test_config_show_default(self, tmp_path: Path):
-        result = runner.invoke(app, ["config", "show", "--config", str(tmp_path / "nonexistent.yaml")])
+        config_path = str(tmp_path / "nonexistent.yaml")
+        result = runner.invoke(app, ["config", "show", "--config", config_path])
         assert result.exit_code == 0
         # Should show default config as JSON
         assert "general" in result.stdout or "project_dir" in result.stdout
@@ -138,7 +137,7 @@ class TestLogsCommand:
         assert "WAL not found" in result.stdout
 
     def test_logs_with_data(self, tmp_path: Path):
-        from hermes.orchestrator.wal import WriteAheadLog, WALEvent
+        from hermes.orchestrator.wal import WALEvent, WriteAheadLog
 
         # Create a WAL file
         run_dir = tmp_path / "test-run"
@@ -155,7 +154,7 @@ class TestLogsCommand:
         assert "phase_start" in result.stdout
 
     def test_logs_with_event_filter(self, tmp_path: Path):
-        from hermes.orchestrator.wal import WriteAheadLog, WALEvent
+        from hermes.orchestrator.wal import WALEvent, WriteAheadLog
 
         run_dir = tmp_path / "test-run"
         run_dir.mkdir()

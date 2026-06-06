@@ -9,7 +9,6 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
-from typing import Optional
 
 import typer
 from rich.console import Console
@@ -37,14 +36,14 @@ def run(
     config: Path = typer.Option(
         Path("config/hermes.yaml"), "--config", "-c", help="配置文件路径"
     ),
-    model: Optional[str] = typer.Option(None, "--model", "-m", help="覆盖默认模型"),
-    budget: Optional[float] = typer.Option(None, "--budget", "-b", help="预算上限 USD"),
+    model: str | None = typer.Option(None, "--model", "-m", help="覆盖默认模型"),
+    budget: float | None = typer.Option(None, "--budget", "-b", help="预算上限 USD"),
     dry_run: bool = typer.Option(False, "--dry-run", help="仅验证配置，不执行"),
 ) -> None:
     """提交并执行一个任务。"""
-    from hermes.orchestrator.core import Orchestrator
     from hermes.observability.logger import setup_logging
-    from hermes.utils.config import HermesConfig, ConfigValidator
+    from hermes.orchestrator.core import Orchestrator
+    from hermes.utils.config import ConfigValidator, HermesConfig
 
     # 加载配置
     cfg = HermesConfig.load(config)
@@ -91,7 +90,7 @@ def run(
         final_phase = orch.run()
 
         if final_phase.value == "done":
-            console.print(f"\n[green]✓ Task completed successfully[/green]")
+            console.print("\n[green]✓ Task completed successfully[/green]")
         else:
             console.print(f"\n[yellow]⚠ Task ended at: {final_phase.value}[/yellow]")
 
@@ -107,7 +106,7 @@ def run(
 
 @app.command()
 def status(
-    run_id: Optional[str] = typer.Argument(None, help="Run ID（留空显示最近）"),
+    run_id: str | None = typer.Argument(None, help="Run ID（留空显示最近）"),
     data_dir: Path = typer.Option(Path("./runs"), "--data-dir", "-d", help="数据目录"),
     output: str = typer.Option("table", "--output", "-o", help="输出格式: table|json"),
 ) -> None:
@@ -134,7 +133,7 @@ def status(
 def logs(
     run_id: str = typer.Argument(..., help="Run ID"),
     data_dir: Path = typer.Option(Path("./runs"), "--data-dir", "-d"),
-    event: Optional[str] = typer.Option(None, "--event", "-e", help="过滤事件类型"),
+    event: str | None = typer.Option(None, "--event", "-e", help="过滤事件类型"),
     tail: int = typer.Option(50, "--tail", "-n", help="显示最后 N 条"),
 ) -> None:
     """查看任务 WAL 日志。"""
@@ -186,7 +185,7 @@ def config_validate(
     ),
 ) -> None:
     """验证配置文件。"""
-    from hermes.utils.config import HermesConfig, ConfigValidator
+    from hermes.utils.config import ConfigValidator, HermesConfig
 
     try:
         cfg = HermesConfig.load(config_path)
@@ -282,12 +281,12 @@ def version() -> None:
 # ─── 辅助函数 ──────────────────────────────────────────────
 
 
-def _find_latest_state(data_dir: Path) -> Optional[Path]:
+def _find_latest_state(data_dir: Path) -> Path | None:
     """查找最近的任务状态文件。"""
     if not data_dir.exists():
         return None
 
-    latest: Optional[Path] = None
+    latest: Path | None = None
     latest_mtime: float = 0
 
     for state_file in data_dir.glob("*/orchestrator-state.json"):

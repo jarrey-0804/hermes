@@ -17,7 +17,6 @@ import json
 import time
 import uuid
 from pathlib import Path
-from typing import Optional
 
 from hermes.executor.claude_runner import (
     ClaudeResult,
@@ -72,8 +71,8 @@ class Orchestrator:
         self,
         task_description: str,
         project_dir: Path,
-        config: Optional[HermesConfig] = None,
-        run_id: Optional[str] = None,
+        config: HermesConfig | None = None,
+        run_id: str | None = None,
     ) -> None:
         self._run_id = run_id or str(uuid.uuid4())[:8]
         self._task_desc = task_description

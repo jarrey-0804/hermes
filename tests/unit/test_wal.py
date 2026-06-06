@@ -9,10 +9,9 @@ from pathlib import Path
 import pytest
 
 from hermes.orchestrator.wal import (
-    WALEntry,
-    WALError,
-    WALEvent,
     WALCorruptionError,
+    WALEntry,
+    WALEvent,
     WriteAheadLog,
 )
 

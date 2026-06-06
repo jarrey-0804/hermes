@@ -7,7 +7,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
 
 from jinja2 import Environment, FileSystemLoader
 
@@ -34,7 +33,7 @@ class PromptBuilder:
     def __init__(self, templates_dir: Path) -> None:
         self._templates_dir = templates_dir
         self._log = get_logger("prompt_builder")
-        self._jinja: Optional[Environment] = None
+        self._jinja: Environment | None = None
 
     def _get_jinja(self) -> Environment:
         """懒加载 Jinja2 环境。"""
@@ -128,7 +127,7 @@ class PromptBuilder:
 
         return "\n\n".join(parts)
 
-    def _get_previous_phase(self, phase: Phase) -> Optional[Phase]:
+    def _get_previous_phase(self, phase: Phase) -> Phase | None:
         """获取上一阶段。"""
         order = [Phase.RESEARCH, Phase.PLAN, Phase.EXECUTE, Phase.QC]
         try:

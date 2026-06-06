@@ -2,8 +2,6 @@
 
 from pathlib import Path
 
-import pytest
-
 from hermes.qc.hard_checks import (
     CheckResult,
     HardCheckReport,

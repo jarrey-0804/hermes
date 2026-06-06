@@ -14,7 +14,7 @@ import subprocess
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from hermes.observability.logger import get_logger
 
@@ -32,7 +32,7 @@ class ClaudeResult:
     duration_sec: float = 0.0
     timed_out: bool = False
     refused: bool = False
-    json_output: Optional[dict[str, Any]] = None
+    json_output: dict[str, Any] | None = None
 
 
 class ClaudeRunnerError(Exception):
@@ -70,7 +70,7 @@ class ClaudeRunner:
     def __init__(
         self,
         work_dir: Path,
-        env: Optional[dict[str, str]] = None,
+        env: dict[str, str] | None = None,
         no_session: bool = True,
     ) -> None:
         self._work_dir = work_dir
@@ -83,8 +83,8 @@ class ClaudeRunner:
         prompt: str,
         system_prompt: str = "",
         append_system_prompt: str = "",
-        allowed_tools: Optional[list[str]] = None,
-        json_schema: Optional[dict] = None,
+        allowed_tools: list[str] | None = None,
+        json_schema: dict | None = None,
         max_turns: int = 8,
         timeout_sec: int = 900,
         budget_usd: float = 5.0,
@@ -155,7 +155,7 @@ class ClaudeRunner:
 
         只对网络/环境错误重试，逻辑错误不重试。
         """
-        last_error: Optional[Exception] = None
+        last_error: Exception | None = None
 
         for attempt in range(max_network_retries + 1):
             try:
@@ -184,8 +184,8 @@ class ClaudeRunner:
         prompt: str,
         system_prompt: str,
         append_system_prompt: str,
-        allowed_tools: Optional[list[str]],
-        json_schema: Optional[dict],
+        allowed_tools: list[str] | None,
+        json_schema: dict | None,
         max_turns: int,
         budget_usd: float,
         model: str,
@@ -315,7 +315,7 @@ class ClaudeRunner:
         combined = (stdout + stderr).lower()
         return any(marker.lower() in combined for marker in refusal_markers) and exit_code != 0
 
-    def _try_parse_json(self, text: str) -> Optional[dict[str, Any]]:
+    def _try_parse_json(self, text: str) -> dict[str, Any] | None:
         """尝试解析 JSON，三层容错（第11轮）。"""
         # Layer 1: 直接解析
         try:

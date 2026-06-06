@@ -10,34 +10,33 @@
 from __future__ import annotations
 
 import json
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
-
 
 # ─── 通用基础 ──────────────────────────────────────────────
 
 
-class ArtifactVersion(str, Enum):
+class ArtifactVersion(StrEnum):
     V1_0 = "1.0"
 
 
-class ConfidenceLevel(str, Enum):
+class ConfidenceLevel(StrEnum):
     HIGH = "high"      # > 0.8
     MEDIUM = "medium"  # 0.5 - 0.8
     LOW = "low"        # < 0.5
 
 
-class RiskSeverity(str, Enum):
+class RiskSeverity(StrEnum):
     CRITICAL = "critical"
     HIGH = "high"
     MEDIUM = "medium"
     LOW = "low"
 
 
-class TaskComplexity(str, Enum):
+class TaskComplexity(StrEnum):
     TRIVIAL = "trivial"
     SIMPLE = "simple"
     MEDIUM = "medium"
@@ -45,7 +44,7 @@ class TaskComplexity(str, Enum):
     CRITICAL = "critical"
 
 
-class StepType(str, Enum):
+class StepType(StrEnum):
     ADD = "ADD"
     MODIFY = "MODIFY"
     DELETE = "DELETE"
@@ -53,7 +52,7 @@ class StepType(str, Enum):
     CONFIG = "CONFIG"
 
 
-class QCVerdict(str, Enum):
+class QCVerdict(StrEnum):
     PASS = "PASS"
     CONDITIONAL_PASS = "CONDITIONAL_PASS"
     FAIL = "FAIL"

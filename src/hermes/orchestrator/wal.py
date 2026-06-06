@@ -13,9 +13,9 @@ import hashlib
 import json
 import os
 import time
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 
 @dataclass(frozen=True)
@@ -39,7 +39,10 @@ class WALEntry:
 
     def compute_hash(self, secret: str = "") -> str:
         """计算本条记录的 HMAC hash。"""
-        payload = f"{self.seq}:{self.event}:{json.dumps(self.data, sort_keys=True)}:{self.ts}:{self.prev_hash}:{secret}"
+        payload = (
+            f"{self.seq}:{self.event}:{json.dumps(self.data, sort_keys=True)}"
+            f":{self.ts}:{self.prev_hash}:{secret}"
+        )
         return hashlib.sha256(payload.encode()).hexdigest()[:16]
 
 
@@ -160,7 +163,7 @@ class WriteAheadLog:
         if not self._path.exists():
             return entries
 
-        with open(self._path, "r", encoding="utf-8") as f:
+        with open(self._path, encoding="utf-8") as f:
             for line_no, line in enumerate(f, 1):
                 line = line.strip()
                 if not line:
@@ -248,7 +251,7 @@ class WriteAheadLog:
         """获取指定类型的所有事件。"""
         return [e for e in self.replay() if e.event == event_type]
 
-    def get_last_event(self, event_type: str) -> Optional[WALEntry]:
+    def get_last_event(self, event_type: str) -> WALEntry | None:
         """获取指定类型的最后一个事件。"""
         events = self.get_events(event_type)
         return events[-1] if events else None

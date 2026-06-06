@@ -11,10 +11,8 @@ from __future__ import annotations
 import logging
 import sys
 from pathlib import Path
-from typing import Optional
 
 import structlog
-
 
 _configured = False
 
@@ -22,7 +20,7 @@ _configured = False
 def setup_logging(
     level: str = "INFO",
     format: str = "json",  # json | console
-    log_file: Optional[Path] = None,
+    log_file: Path | None = None,
 ) -> structlog.BoundLogger:
     """配置 structlog 全局日志。
 

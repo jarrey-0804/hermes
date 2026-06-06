@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import pytest
@@ -14,9 +13,6 @@ from hermes.qc.artifact import (
     QCResultArtifact,
     QCVerdict,
     ResearchFinding,
-    RiskItem,
-    RiskSeverity,
-    StepType,
     TaskComplexity,
     load_artifact,
     save_artifact,
@@ -235,6 +231,7 @@ class TestArtifactErrorHandling:
 
     def test_save_to_readonly_dir_raises_error(self, tmp_path: Path):
         import os
+
         from hermes.qc.artifact import ArtifactError
         ro_dir = tmp_path / "readonly"
         ro_dir.mkdir()

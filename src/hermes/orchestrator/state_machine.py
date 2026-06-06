@@ -7,11 +7,10 @@ TCB 核心：状态机定义与转移验证。
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from enum import Enum
-from typing import Optional
+from enum import StrEnum
 
 
-class Phase(str, Enum):
+class Phase(StrEnum):
     """四阶循环 + 终态。"""
 
     RESEARCH = "research"
@@ -32,7 +31,7 @@ class Phase(str, Enum):
         return self in (Phase.RESEARCH, Phase.PLAN, Phase.EXECUTE, Phase.QC, Phase.PROPOSE_SOP)
 
 
-class Outcome(str, Enum):
+class Outcome(StrEnum):
     """阶段执行结果。"""
 
     SUCCESS = "success"
@@ -55,10 +54,10 @@ class PhaseConfig:
     budget_usd: float = 2.0
     permission_mode: str = "default"  # default | plan | acceptEdits
     allowed_tools: list[str] = field(default_factory=list)
-    required_output: Optional[str] = None
+    required_output: str | None = None
     system_prompt_template: str = ""
     context_template: str = ""
-    output_schema: Optional[dict] = None
+    output_schema: dict | None = None
 
     @property
     def is_readonly(self) -> bool:
@@ -309,7 +308,9 @@ class StateMachine:
         }
 
     @classmethod
-    def from_dict(cls, data: dict, phase_configs: dict[Phase, PhaseConfig] | None = None) -> StateMachine:
+    def from_dict(
+        cls, data: dict, phase_configs: dict[Phase, PhaseConfig] | None = None
+    ) -> StateMachine:
         """从序列化数据恢复。"""
         sm = cls(
             initial_phase=Phase(data["phase"]),

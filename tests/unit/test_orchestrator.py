@@ -9,16 +9,15 @@ from __future__ import annotations
 import json
 import time
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
 from hermes.orchestrator.core import (
     Orchestrator,
-    OrchestratorError,
 )
-from hermes.utils.budget import BudgetExceededError
 from hermes.orchestrator.state_machine import Outcome, Phase
+from hermes.utils.budget import BudgetExceededError
 from hermes.utils.config import HermesConfig
 
 
@@ -60,7 +59,7 @@ class TestFinalizationOnError:
         with patch.object(orch, "_run_stage", side_effect=mock_run_stage), \
              patch.object(orch, "_create_branch"):
             # run() 应该不抛出异常，而是返回 ESCALATE 或当前 phase
-            final_phase = orch.run()
+            orch.run()
 
         # 验证 WAL 包含收尾记录
         wal_path = orch.task_dir / "wal.jsonl"
@@ -90,7 +89,7 @@ class TestFinalizationOnError:
 
         with patch.object(orch, "_run_stage", side_effect=mock_run_stage), \
              patch.object(orch, "_create_branch"):
-            final_phase = orch.run()
+            orch.run()
 
         # 验证收尾执行了
         wal_path = orch.task_dir / "wal.jsonl"
@@ -136,7 +135,7 @@ class TestFinalizationOnError:
         wal_text = wal_path.read_text()
         assert "run_complete" in wal_text
         # 不应有 run_failed
-        lines = [json.loads(l) for l in wal_text.strip().split("\n") if l.strip()]
+        lines = [json.loads(line) for line in wal_text.strip().split("\n") if line.strip()]
         events = [e["event"] for e in lines]
         assert "run_failed" not in events
 
@@ -152,7 +151,8 @@ class TestFinalizationOnError:
             orch.run()
 
         wal_path = orch.task_dir / "wal.jsonl"
-        lines = [json.loads(l) for l in wal_path.read_text().strip().split("\n") if l.strip()]
+        wal_lines = wal_path.read_text().strip().split("\n")
+        lines = [json.loads(line) for line in wal_lines if line.strip()]
 
         # 找到 run_failed 事件（至少有 1 条包含原因）
         failed_events = [e for e in lines if e["event"] == "run_failed"]

@@ -12,10 +12,8 @@
 from __future__ import annotations
 
 import re
-import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
 
 from hermes.observability.logger import get_logger
 
@@ -76,8 +74,8 @@ class HardChecks:
         self,
         project_dir: Path,
         max_diff_lines: int = 500,
-        protected_files: Optional[list[str]] = None,
-        exclude_patterns: Optional[list[str]] = None,
+        protected_files: list[str] | None = None,
+        exclude_patterns: list[str] | None = None,
     ) -> None:
         self._project_dir = project_dir
         self._max_diff_lines = max_diff_lines
@@ -88,7 +86,7 @@ class HardChecks:
     def run_all(
         self,
         diff_text: str = "",
-        changed_files: Optional[list[str]] = None,
+        changed_files: list[str] | None = None,
     ) -> HardCheckReport:
         """执行所有硬检。"""
         report = HardCheckReport()
@@ -153,10 +151,11 @@ class HardChecks:
                 continue
 
         if todos_found:
+            markers = ', '.join(todos_found[:5])
             return CheckResult(
                 name="todo_fixme",
                 passed=False,
-                details=f"Found {len(todos_found)} TODO/FIXME markers: {', '.join(todos_found[:5])}",
+                details=f"Found {len(todos_found)} TODO/FIXME markers: {markers}",
                 severity="low",
             )
         return CheckResult(name="todo_fixme", passed=True)
